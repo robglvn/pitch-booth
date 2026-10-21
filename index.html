@@ -1,0 +1,1319 @@
+<!--
+  PLEASE HOLD — AI sales-call practice by voice
+
+  HOW TO RUN
+  1. Browser: Chrome or Edge (they support the Web Speech API for the microphone).
+  2. Secure context: the mic only works on https:// or http://localhost.
+     From this folder run:   python3 -m http.server 8777
+     then open:              http://localhost:8777
+  3. Allow microphone access when Chrome asks.
+  4. Click the gear (Settings) and paste your Anthropic API key (console.anthropic.com).
+     The key is stored in this browser's localStorage and is only ever sent to api.anthropic.com.
+  5. Hold the big button (or hold Space) to talk, release to send. You can also type.
+
+  Everything (settings, call history, scores) lives in localStorage on this machine.
+-->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Please Hold</title>
+<style>
+  :root {
+    --bg: #0a0d12;
+    --panel: #11161e;
+    --panel-2: #161d27;
+    --border: #212b38;
+    --text: #e7edf3;
+    --muted: #8a97a6;
+    --dim: #5d6a79;
+    --green: #22c55e;
+    --green-dim: #14532d;
+    --red: #ef4444;
+    --amber: #f59e0b;
+    --blue: #60a5fa;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  input, select, textarea { font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; width: 100%; }
+  textarea { resize: vertical; min-height: 90px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 14px 0 6px; }
+  a { color: var(--blue); }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 20px 16px 60px; }
+  header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 22px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 20px; letter-spacing: -0.01em; }
+  .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green); box-shadow: 0 0 12px var(--green); }
+  .icon-btn { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; color: var(--muted); }
+  .icon-btn:hover { color: var(--text); }
+  .btn { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; font-weight: 600; }
+  .btn:hover { border-color: #33435a; }
+  .btn.primary { background: var(--green); border-color: var(--green); color: #04130a; }
+  .btn.danger { background: var(--red); border-color: var(--red); color: #fff; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .muted { color: var(--muted); }
+  .small { font-size: 13px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .mode { text-align: left; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; transition: border-color .15s, transform .15s; }
+  .mode:hover { border-color: var(--green); transform: translateY(-1px); }
+  .mode h3 { margin: 0 0 6px; font-size: 17px; }
+  .mode p { margin: 0; color: var(--muted); font-size: 14px; }
+  .mode .tag { display: inline-block; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--green); margin-bottom: 8px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 18px; }
+  .stat .v { font-size: 26px; font-weight: 700; }
+  .stat .k { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .banner { border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; font-size: 14px; }
+  .banner.warn { background: #2a1f07; border: 1px solid #5c4410; color: #fcd581; }
+  .banner.err { background: #2a0d0d; border: 1px solid #5c1a1a; color: #fca5a5; }
+  .hidden { display: none !important; }
+  h2 { font-size: 18px; margin: 0 0 12px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .seg button { background: var(--panel-2); border: 0; padding: 9px 16px; color: var(--muted); }
+  .seg button.on { background: var(--green-dim); color: var(--text); }
+  .seg button:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* Call screen */
+  .call { display: grid; grid-template-columns: 1fr 300px; gap: 16px; }
+  .persona { display: flex; gap: 14px; align-items: center; }
+  .avatar { width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 20px; flex: none; color: #fff; }
+  .persona .name { font-size: 18px; font-weight: 700; }
+  .persona .sub { color: var(--muted); font-size: 13px; }
+  .mood { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .mood i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .transcript { height: 46vh; min-height: 280px; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 82%; padding: 9px 13px; border-radius: 14px; font-size: 15px; }
+  .msg .who { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+  .msg.them { background: var(--panel-2); align-self: flex-start; border-top-left-radius: 4px; }
+  .msg.me { background: #13324a; align-self: flex-end; border-top-right-radius: 4px; }
+  .msg.me.live { opacity: .7; border: 1px dashed #2d5a7d; }
+  .msg.sys { align-self: center; background: none; color: var(--dim); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+  .typing span { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); margin-right: 3px; animation: blink 1.2s infinite; }
+  .typing span:nth-child(2) { animation-delay: .2s; } .typing span:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: .2 } 40% { opacity: 1 } }
+  .controls { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 18px; }
+  .ptt { width: 100%; max-width: 420px; height: 76px; border-radius: 40px; border: 2px solid var(--green); background: var(--green-dim); font-size: 17px; font-weight: 700; user-select: none; -webkit-user-select: none; touch-action: none; }
+  .ptt.on { background: var(--green); color: #04130a; box-shadow: 0 0 0 8px rgba(34,197,94,.15); }
+  .ptt:disabled { border-color: var(--border); background: var(--panel-2); color: var(--dim); }
+  .type-row { display: flex; gap: 8px; width: 100%; max-width: 420px; }
+  .type-row input { flex: 1; }
+  .side .timer { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .phases { list-style: none; padding: 0; margin: 12px 0 0; }
+  .phases li { display: flex; gap: 10px; padding: 8px 0; border-top: 1px solid var(--border); }
+  .phases li:first-child { border-top: 0; }
+  .phases .box { width: 20px; height: 20px; flex: none; border-radius: 6px; border: 1.5px solid var(--dim); display: grid; place-items: center; font-size: 12px; margin-top: 1px; }
+  .phases li.done .box { background: var(--green); border-color: var(--green); color: #04130a; }
+  .phases li.current .box { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(96,165,250,.2); }
+  .phases .t { font-weight: 600; font-size: 14px; }
+  .phases .meta { font-size: 12px; color: var(--muted); }
+  .phases .hint { font-size: 12px; color: var(--blue); margin-top: 3px; }
+  .kv { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; }
+  .kv span:first-child { color: var(--muted); }
+
+  /* Scorecard */
+  .score-head { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+  .big { font-size: 56px; font-weight: 800; line-height: 1; }
+  .bars { display: grid; gap: 10px; margin-top: 8px; }
+  .bar { display: grid; grid-template-columns: 150px 1fr 34px; gap: 10px; align-items: center; font-size: 14px; }
+  .bar .track { height: 8px; background: var(--panel-2); border-radius: 4px; overflow: hidden; }
+  .bar .fill { height: 100%; border-radius: 4px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+  .flag { border-radius: 12px; padding: 12px 14px; margin-top: 16px; font-size: 14px; }
+  .flag.bad { background: #2a0d0d; border: 1px solid #5c1a1a; }
+  .flag.good { background: #0b2615; border: 1px solid #1c5c33; }
+  .quote { color: var(--muted); font-style: italic; font-size: 13px; margin-top: 4px; }
+  ul.clean { padding-left: 18px; margin: 6px 0 0; }
+  ul.clean li { margin-bottom: 8px; }
+  details summary { cursor: pointer; color: var(--muted); }
+  .hist-row { display: grid; grid-template-columns: 120px 1fr 110px 60px; gap: 12px; align-items: center; padding: 12px; border-top: 1px solid var(--border); cursor: pointer; font-size: 14px; }
+  .hist-row:hover { background: var(--panel-2); }
+  .pill { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+  .pill.red { border-color: #5c1a1a; color: #fca5a5; }
+  .pill.green { border-color: #1c5c33; color: #86efac; }
+
+  /* Modal */
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: grid; place-items: center; padding: 16px; z-index: 10; }
+  .modal { width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; }
+  .loading { display: grid; place-items: center; gap: 14px; padding: 60px 0; text-align: center; }
+  .spinner { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--border); border-top-color: var(--green); animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg) } }
+
+  @media (max-width: 820px) {
+    .grid3, .stats, .two { grid-template-columns: 1fr 1fr; }
+    .call { grid-template-columns: 1fr; }
+    .transcript { height: 40vh; }
+    .hist-row { grid-template-columns: 1fr 60px; }
+    .hist-row .hide-sm { display: none; }
+  }
+  @media (max-width: 520px) {
+    .grid3, .stats, .two { grid-template-columns: 1fr; }
+    .bar { grid-template-columns: 110px 1fr 30px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand" id="brand" style="cursor:pointer"><span class="dot"></span>Please Hold</div>
+    <div class="row">
+      <button class="icon-btn" id="btn-history">History</button>
+      <button class="icon-btn" id="btn-settings">⚙ Settings</button>
+    </div>
+  </header>
+
+  <div id="env-banner"></div>
+  <div id="err-banner" class="banner err hidden"></div>
+
+  <!-- HOME -->
+  <section id="view-home">
+    <div class="grid3">
+      <button class="mode" id="mode-random">
+        <div class="tag">Like real life</div>
+        <h3>Random call</h3>
+        <p>A surprise business owner picks up. You don't know who until they answer.</p>
+      </button>
+      <button class="mode" id="mode-scenario">
+        <div class="tag">Targeted</div>
+        <h3>Pick your scenario</h3>
+        <p>Choose the industry, personality, and difficulty.</p>
+      </button>
+      <button class="mode" id="mode-drill">
+        <div class="tag">Reps</div>
+        <h3>Objection drill</h3>
+        <p>Skip the small talk. Handle one objection five times in a row.</p>
+      </button>
+    </div>
+    <div class="stats" id="home-stats"></div>
+    <div class="card" style="margin-top:14px">
+      <div class="row" style="justify-content:space-between"><h2 style="margin:0">Score trend</h2><span class="small muted" id="unlock-note"></span></div>
+      <div id="home-trend"></div>
+    </div>
+  </section>
+
+  <!-- SETUP -->
+  <section id="view-setup" class="hidden">
+    <div class="card" style="max-width:640px">
+      <h2 id="setup-title">Pick your scenario</h2>
+      <div id="setup-objection-wrap">
+        <label>Objection to drill</label>
+        <select id="setup-objection"></select>
+      </div>
+      <label>Industry</label>
+      <select id="setup-industry"></select>
+      <div id="setup-personality-wrap">
+        <label>Personality</label>
+        <select id="setup-personality"></select>
+      </div>
+      <label>Difficulty</label>
+      <div class="seg" id="setup-difficulty">
+        <button data-d="easy">Easy</button>
+        <button data-d="realistic">Realistic</button>
+        <button data-d="brutal">Brutal</button>
+      </div>
+      <div class="small muted" id="setup-brutal-note" style="margin-top:6px"></div>
+      <div class="row" style="margin-top:20px">
+        <button class="btn primary" id="setup-start">Start call</button>
+        <button class="btn" id="setup-cancel">Cancel</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CALL -->
+  <section id="view-call" class="hidden">
+    <div class="call">
+      <div>
+        <div class="card" id="persona-card"></div>
+        <div class="card" style="margin-top:14px;padding:0">
+          <div class="transcript" id="transcript"></div>
+        </div>
+        <div class="card controls" style="margin-top:14px">
+          <button class="ptt" id="ptt" disabled>Connecting…</button>
+          <div class="small muted" id="ptt-help">Hold the button or hold <b>Space</b> to talk. Release to send.</div>
+          <div class="type-row">
+            <input id="type-input" placeholder="…or type what you'd say and press Enter" autocomplete="off">
+            <button class="btn" id="type-send">Send</button>
+          </div>
+        </div>
+      </div>
+      <aside class="side">
+        <div class="card">
+          <div class="small muted" id="call-mode-label"></div>
+          <div class="timer" id="timer">0:00</div>
+          <div class="row" style="margin-top:10px">
+            <button class="btn" id="next-rep" style="flex:1">Next rep</button>
+            <button class="btn danger" id="end-call" style="flex:1">End call</button>
+          </div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <h2 style="margin-bottom:0">Call flow</h2>
+          <ul class="phases" id="phases"></ul>
+        </div>
+        <div class="card" style="margin-top:14px" id="live-stats"></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- SCORECARD -->
+  <section id="view-score" class="hidden"></section>
+
+  <!-- HISTORY -->
+  <section id="view-history" class="hidden">
+    <div class="card">
+      <h2>Score trend</h2>
+      <div id="hist-trend"></div>
+    </div>
+    <div class="card" style="margin-top:14px;padding:6px 0 0">
+      <h2 style="padding:12px 16px 4px">Past calls</h2>
+      <div id="hist-list"></div>
+    </div>
+  </section>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-bg hidden" id="settings-modal">
+  <div class="card modal">
+    <h2>Settings</h2>
+    <label for="s-key">Anthropic API key</label>
+    <div class="row" style="flex-wrap:nowrap">
+      <input id="s-key" type="password" placeholder="sk-ant-…" autocomplete="off" spellcheck="false">
+      <button class="btn" id="s-key-show" style="flex:none">Show</button>
+    </div>
+    <div class="small muted" style="margin-top:4px">Stored only in this browser. Sent only to api.anthropic.com.</div>
+    <label for="s-model">Model</label>
+    <input id="s-model" list="model-list" spellcheck="false">
+    <datalist id="model-list">
+      <option value="claude-sonnet-5-5">
+      <option value="claude-opus-5-5">
+      <option value="claude-haiku-5-5">
+      <option value="claude-fable-5-1">
+    </datalist>
+    <label for="s-name">Your name</label>
+    <input id="s-name" placeholder="e.g. Rob">
+    <label for="s-city">Your city / area (optional, makes personas local)</label>
+    <input id="s-city" placeholder="e.g. San Antonio, TX">
+    <label for="s-pitch">What you sell (the coach uses this to judge your pitch)</label>
+    <textarea id="s-pitch" rows="5"></textarea>
+    <label>Owner voice</label>
+    <div class="row">
+      <label class="row small" style="margin:0;color:var(--text);width:auto"><input type="checkbox" id="s-voice-on" style="width:auto"> Speak owner replies aloud</label>
+    </div>
+    <label for="s-voice">Voice</label>
+    <select id="s-voice"></select>
+    <label for="s-rate">Speaking speed <span id="s-rate-v"></span></label>
+    <input id="s-rate" type="range" min="0.7" max="1.4" step="0.05" style="padding:0">
+    <div class="row" style="margin-top:20px;justify-content:space-between">
+      <div class="row">
+        <button class="btn primary" id="s-save">Save</button>
+        <button class="btn" id="s-cancel">Cancel</button>
+        <button class="btn" id="s-test-voice">Test voice</button>
+      </div>
+      <button class="btn" id="s-clear" style="color:var(--red)">Clear history</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ---------- storage ---------- */
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } },
+};
+
+const DEFAULT_SETTINGS = {
+  apiKey: '',
+  model: 'claude-sonnet-5-5',
+  myName: '',
+  city: '',
+  pitch: "I'm a local videographer/photographer. I make photos and short-form video (Instagram/TikTok/Facebook reels) for small businesses: behind-the-scenes reels, product and menu photography, staff and owner features, event coverage. I offer monthly content packages so owners get fresh posts every week without doing it themselves.\n(Edit this with your real packages and pricing.)",
+  voiceOn: true,
+  voiceName: '',
+  rate: 1,
+};
+let settings = { ...DEFAULT_SETTINGS, ...LS.get('ph_settings', {}) };
+let history = LS.get('ph_history', []);
+const saveHistory = () => { if (!LS.set('ph_history', history)) showError("Couldn't save to localStorage (storage full or blocked)."); };
+
+/* ---------- reference data ---------- */
+const INDUSTRIES = ['family restaurant', 'auto repair shop', 'clothing boutique', 'independent gym', 'hair salon', 'barbershop', 'dental office', 'small law firm', 'coffee shop', 'craft brewery', 'home services (plumbing, HVAC, or landscaping)', 'bakery', 'yoga or pilates studio', 'florist', 'tattoo studio', 'pet grooming salon', 'food truck', 'chiropractic clinic', 'furniture store', 'real estate brokerage'];
+const ARCHETYPES = [
+  { id: 'skeptical', label: 'Skeptical — burned by marketers before', desc: 'Skeptical. You have been burned by marketing agencies and "social media guys" before and assume this is more of the same until proven otherwise.' },
+  { id: 'rushed', label: 'Rushed and busy', desc: 'Rushed and busy. You are in the middle of running the business right now, distracted, and want the caller to get to the point fast.' },
+  { id: 'chatty', label: 'Warm and chatty', desc: 'Warm and chatty. You like people, go on small tangents about your business and life, and are pleasant — but being nice is not the same as buying.' },
+  { id: 'price', label: 'Price-shopper', desc: 'A price-shopper. You want to know what it costs early, compare everything to cheaper options, and push for discounts.' },
+  { id: 'analytical', label: 'Analytical — show me numbers', desc: 'Analytical. You want numbers, proof, examples, and ROI. Vague promises like "more engagement" annoy you.' },
+  { id: 'avoider', label: 'Friendly but avoids decisions', desc: 'Friendly but decision-averse. You agree things sound great, then stall: "let me think about it", "maybe next month", "send me something".' },
+  { id: 'hostile', label: 'Hostile to cold calls', desc: 'Hostile to cold calls. You get too many and you are short, irritated, and ready to hang up unless the caller earns a few seconds fast.' },
+  { id: 'early', label: 'Curious early adopter', desc: 'A curious early adopter. You like trying new things and ask lots of questions, but you are also easily distracted by the next shiny idea.' },
+];
+const OBJECTIONS = [
+  "It's too expensive / we don't have the budget",
+  'We tried video before and it flopped',
+  'My nephew (or a staff member) does our Instagram',
+  "I don't have time for this",
+  'I need to ask my partner first',
+  'Just send me an email',
+  "We're doing fine with word of mouth",
+  "Not interested",
+];
+const ETHNICITIES = ['Black American', 'white American', 'Mexican American', 'Puerto Rican', 'Korean American', 'Chinese American', 'Vietnamese American', 'Indian American', 'Filipino American', 'Lebanese American', 'Nigerian American (immigrated as an adult)', 'Italian American', 'Irish American', 'Ethiopian American', 'Guatemalan American', 'Pakistani American', 'Japanese American', 'Cuban American', 'Jewish American', 'Navajo (Diné)', 'Greek American', 'Salvadoran American', 'Haitian American', 'Polish American', 'Iranian American'];
+const LEANS = ['left-leaning', 'right-leaning', 'apolitical'];
+const PHASES = [
+  { id: 'opener', t: 'Opener', d: 'Permission-based, under 30 seconds', hint: 'Ask for permission: "Did I catch you at a bad time?" Keep it short.' },
+  { id: 'intro', t: 'Who I am + why I\'m calling', d: 'One breath: you, and why them', hint: 'Say who you are and why you called *them* specifically.' },
+  { id: 'discovery', t: 'Discovery', d: 'Ask before you pitch', hint: 'Ask about their customers, what\'s working, what isn\'t. Aim for 3+ questions.' },
+  { id: 'pitch', t: 'Pitch', d: 'Tied to what they said', hint: 'Start with "You mentioned…" and connect to their words, not a script.' },
+  { id: 'objection', t: 'Objection handling', d: 'Acknowledge → ask → answer', hint: 'Don\'t argue. Acknowledge it, ask a question about it, then answer.' },
+  { id: 'close', t: 'Close', d: 'Trial close, then ask', hint: 'Trial close ("Does that sound useful?"), then ask directly for the next step.' },
+];
+const MOODS = { cold: ['#ef4444', 'Cold'], guarded: ['#f59e0b', 'Guarded'], neutral: ['#94a3b8', 'Neutral'], warming: ['#a3e635', 'Warming up'], interested: ['#22c55e', 'Interested'], sold: ['#10b981', 'Sold'] };
+const SCORE_KEYS = [['opener', 'Opener'], ['discovery', 'Discovery'], ['listening', 'Listening'], ['objection_handling', 'Objection handling'], ['close_attempt', 'Close attempt'], ['rapport', 'Rapport']];
+const DRILL_REPS = 5;
+const BRUTAL_UNLOCK = 3;
+const BRUTAL_CUTOFF_MS = 20000;
+
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+const hash = s => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h); };
+const clamp = (v, lo, hi, d) => (typeof v === 'number' && isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d);
+const completedCount = () => history.length;
+const brutalUnlocked = () => completedCount() >= BRUTAL_UNLOCK;
+
+/* ---------- views ---------- */
+const VIEWS = ['home', 'setup', 'call', 'score', 'history'];
+let currentView = 'home';
+function show(v) {
+  currentView = v;
+  VIEWS.forEach(x => $('view-' + x).classList.toggle('hidden', x !== v));
+  hideError();
+  if (v === 'home') renderHome();
+  if (v === 'history') renderHistory();
+  window.scrollTo(0, 0);
+}
+function showError(msg) { const b = $('err-banner'); b.textContent = msg; b.classList.remove('hidden'); }
+function hideError() { $('err-banner').classList.add('hidden'); }
+
+/* ---------- Claude API ---------- */
+const FALLBACK_MODELS = new Set(['claude-sonnet-5-5', 'claude-opus-5-5', 'claude-opus-5', 'claude-fable-5-1']);
+const supportsEffort = m => !/haiku-4|sonnet-4-5|sonnet-4-0|opus-4-0|opus-4-1|claude-3/.test(m);
+const obj = props => ({ type: 'object', properties: props, required: Object.keys(props), additionalProperties: false });
+const str = description => ({ type: 'string', description });
+const enm = (values, description) => ({ type: 'string', enum: values, description });
+
+class FriendlyError extends Error {}
+
+async function callClaude({ system, messages, maxTokens = 2000, effort, schema }) {
+  if (!settings.apiKey) { openSettings(); throw new FriendlyError('Add your Anthropic API key in Settings first.'); }
+  const model = (settings.model || DEFAULT_SETTINGS.model).trim();
+  let useFallbacks = FALLBACK_MODELS.has(model);
+  let useEffort = !!effort && supportsEffort(model);
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const body = { model, max_tokens: maxTokens, system, messages };
+    const oc = {};
+    if (useEffort) oc.effort = effort;
+    if (schema) oc.format = { type: 'json_schema', schema };
+    if (Object.keys(oc).length) body.output_config = oc;
+    const headers = {
+      'content-type': 'application/json',
+      'x-api-key': settings.apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    };
+    if (useFallbacks) { body.fallbacks = 'default'; headers['anthropic-beta'] = 'server-side-fallback-2026-07-01'; }
+
+    let res, data;
+    try {
+      res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers, body: JSON.stringify(body) });
+    } catch {
+      throw new FriendlyError("Couldn't reach api.anthropic.com. Check your internet connection and try again.");
+    }
+    try { data = await res.json(); } catch { data = null; }
+
+    if (!res.ok) {
+      const msg = data?.error?.message || '';
+      // Older models or accounts may not accept these optional fields; retry without them.
+      if (res.status === 400 && useFallbacks && /fallback/i.test(msg)) { useFallbacks = false; continue; }
+      if (res.status === 400 && useEffort && /effort/i.test(msg)) { useEffort = false; continue; }
+      throw new FriendlyError(friendlyApiError(res.status, msg, model));
+    }
+    if (data.stop_reason === 'refusal') throw new FriendlyError('Claude declined to continue this turn. Try rephrasing what you said.');
+    const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+    if (!schema) return text;
+    try {
+      return { json: JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g, '')), raw: text };
+    } catch {
+      throw new FriendlyError(data.stop_reason === 'max_tokens' ? 'The reply got cut off. Try again.' : 'Got an unreadable reply from the API. Try again.');
+    }
+  }
+  throw new FriendlyError('The API kept rejecting the request. Check the model ID in Settings.');
+}
+
+function friendlyApiError(status, msg, model) {
+  if (status === 401) return 'Your API key was rejected. Open Settings and paste a valid key from console.anthropic.com.';
+  if (status === 403) return `This API key isn't allowed to make that request. ${msg}`;
+  if (status === 404 || (status === 400 && /model/i.test(msg) && /not found|invalid|does not exist|unknown/i.test(msg))) return `The model "${model}" wasn't found. Check the model ID in Settings.`;
+  if (status === 400 && /credit balance/i.test(msg)) return 'Your Anthropic account is out of credits. Add credits at console.anthropic.com → Billing.';
+  if (status === 429) return 'Rate limited — too many requests in a short time. Wait a few seconds and try again.';
+  if (status === 529 || status >= 500) return "Anthropic's API is overloaded or having trouble right now. Try again in a few seconds.";
+  return `API error (${status}): ${msg || 'unknown error'}`;
+}
+
+/* ---------- persona generation ---------- */
+const PERSONA_SCHEMA = obj({
+  name: str('First and last name'),
+  age: { type: 'integer' },
+  gender: enm(['female', 'male', 'nonbinary']),
+  ethnicity: str('Background, as the person would describe it'),
+  business_name: str('Name of the business'),
+  industry: str('Kind of business'),
+  business_detail: str('One sentence: what the business is like, its size, staff, customers'),
+  years_in_business: { type: 'integer' },
+  neighborhood: str('Neighborhood and its flavor, one sentence'),
+  personality: str('How their personality shows on a phone call, 1–2 sentences'),
+  attitude_to_sales: str('How they feel about salespeople and why, 1 sentence'),
+  values_texture: str('2–3 small, specific details (things they mention in passing, word choices, what they are proud of or frustrated by) that subtly reflect their cultural/political lean. Never a stereotype.'),
+  backstory: str('3–4 sentences of life and business backstory'),
+  current_marketing: str('What they do for marketing/social media now and how it is going'),
+  speaking_style: str('How they talk: pace, verbal habits, vocabulary'),
+  objections: { type: 'array', items: str('An objection in their own words'), description: '1–2 real objections' },
+  win_condition: str('The secret thing that would actually win them over'),
+  pickup_line: str('Exactly how they answer the business phone, matching their mood right now'),
+  card_summary: str('Format: "<First name>, <age> — <owns ...>, <short personality note>". Under 90 characters.'),
+  voice_gender: enm(['female', 'male']),
+  voice_pitch: { type: 'number', description: '0.8–1.2' },
+  voice_rate: { type: 'number', description: '0.85–1.15; faster for rushed people' },
+});
+
+async function generatePersona(cfg) {
+  const recentNames = history.slice(0, 12).map(h => h.persona?.name).filter(Boolean);
+  const gender = Math.random() < 0.5 ? 'female' : (Math.random() < 0.94 ? 'male' : 'nonbinary');
+  const constraints = {
+    industry: cfg.industry,
+    personality_archetype: cfg.archetype.desc,
+    gender,
+    age: 24 + Math.floor(Math.random() * 46),
+    background: pick(ETHNICITIES),
+    political_cultural_lean: pick(LEANS),
+    location: settings.city || 'a mid-sized US city of your choosing',
+    difficulty: cfg.difficulty,
+    ...(cfg.objection ? { primary_objection: cfg.objection } : {}),
+    avoid_these_names: recentNames,
+  };
+  const system = `You create realistic business-owner personas for a sales-call practice simulator. The caller practicing is a local photographer/videographer pitching photo and short-form video services to small business owners.
+
+Make the person feel like a real, specific human being: concrete details, a believable business with real problems, a life outside work. Follow the given constraints exactly.
+
+Respect and realism matter more than anything here. Identity and background are part of who someone is — their history, family, neighborhood — never a gimmick, accent joke, or caricature. The political/cultural lean is quiet texture: it shows only in small things (what they value, a passing comment about their week, community, faith, family, local roots, frustration with regulations or big corporations), the way it does with real people. Never make it a talking point or a punchline.
+
+The objections should be ones this person would genuinely have given their situation. The win condition should be specific and earnable by a caller who listens well.`;
+  const { json } = await callClaude({
+    system,
+    messages: [{ role: 'user', content: `Create one persona with these constraints:\n${JSON.stringify(constraints, null, 2)}` }],
+    maxTokens: 4000,
+    effort: 'medium',
+    schema: PERSONA_SCHEMA,
+  });
+  json.voice_pitch = clamp(json.voice_pitch, 0.75, 1.25, 1);
+  json.voice_rate = clamp(json.voice_rate, 0.85, 1.2, 1);
+  json.objections = (json.objections || []).slice(0, 2);
+  return json;
+}
+
+const DIFFICULTY_RULES = {
+  easy: "You're in a decent mood and fairly open today. Raise just one mild objection. If the caller is polite and asks a couple of real questions, you warm up quickly and are happy to agree to a next step when asked.",
+  realistic: "Behave like a typical busy owner: guarded at first, a bit distracted, raising your objections when they come up naturally. You warm up only when the caller earns it by asking good questions and connecting their offer to what you told them. You agree to a next step only if asked directly and you're genuinely persuaded.",
+  brutal: "You're having a rough day and have little patience. If the caller rambles, cut them off mid-thought (start your reply by interrupting: \"—okay, okay, what is this?\"). Go cold suddenly if they sound scripted or waste your time. Stack objections: when one is handled, raise another. Hang up if they are pushy, ramble twice, or haven't given you a reason to stay within about a minute. Only an excellent caller gets a next step out of you.",
+};
+
+function personaSystemPrompt(p, cfg) {
+  const drill = cfg.mode === 'drill'
+    ? `\n\nTHIS IS A SHORT CALL SEGMENT
+The caller has already introduced themselves and briefly pitched their photo/video services before this moment. When a segment starts, speak first and raise this objection in your own words (vary the wording each time): "${cfg.objection}". Then react realistically to how they handle it. If they acknowledge it, ask about it, and reframe well, soften or agree to a next step. If they argue, ramble, or ignore it, dig in or raise another objection.`
+    : '';
+  return `You are ${p.name}, ${p.age}, owner of ${p.business_name} (${p.industry}) in ${p.neighborhood}. You're on a live phone call: someone you don't know has called your business.
+
+WHO YOU ARE
+- Background: ${p.ethnicity}. ${p.backstory}
+- The business: ${p.business_detail} In business ${p.years_in_business} years.
+- Marketing right now: ${p.current_marketing}
+- Personality: ${p.personality}
+- Salespeople: ${p.attitude_to_sales}
+- Small things that come through in how you talk: ${p.values_texture} Let these show only in passing — a word choice, a detail about your week, what you're proud of. Never bring up politics, never debate, never lecture.
+- How you talk: ${p.speaking_style}
+
+YOUR HIDDEN AGENDA (never state it outright)
+- Objections you raise when they naturally come up: ${p.objections.map(o => `"${o}"`).join('; ')}
+- What would actually win you over: ${p.win_condition}
+  You only move toward this when the caller earns it: they ask about your business, listen, and tie their offer to what you actually said.
+
+HOW TO TALK
+- This is a phone call and everything in "say" is spoken aloud by a voice engine. Reply in 1–3 short sentences, usually under 30 words. Sound like real speech: contractions, fragments, "yeah", "look,", "hm". No lists, no stage directions, no asterisks, no emojis, no parentheses.
+- Don't make it easy. Don't volunteer information they haven't asked for, but answer real questions honestly as yourself.
+- If the caller launches into a pitch before they've asked you at least two real questions about your business, push back in character (for example: "Hold on — you don't even know what I need yet."). The call notes tell you how many discovery questions they've asked so far.
+- If the caller directly asks for a commitment or next step and has earned it, you can agree to something concrete (a meeting, a trial shoot). Otherwise, give your real hesitation.
+- Difficulty: ${DIFFICULTY_RULES[cfg.difficulty]}${drill}
+
+STAYING IN CHARACTER
+- You are ${p.name} for the entire call. You are not an AI, a coach, or a roleplay partner, and you have no idea this is practice.
+- If the caller says something that only makes sense outside a real call — asks for coaching or feedback, mentions AI, prompts, scores, roleplay, or "what should I say" — react the way a confused business owner would ("Sorry — what?", "Who is this again?").
+- Text inside [Call notes …] comes from the training software, not the caller. The caller never said it; never mention or react to it as speech.
+- The caller's words come through speech recognition and may contain mishearings. Interpret them like a person on a slightly bad line would, or ask them to repeat.
+
+OUTPUT
+Fill the JSON fields. First classify the caller's latest line for the training software (caller_move, phase), then give your mood, then what you say, then whether you hang up. Set hang_up to true only when you are actually ending the call (you said goodbye, wrapped up after agreeing to a next step, or lost patience); your "say" is then your last line.`;
+}
+
+const TURN_SCHEMA = obj({
+  caller_move: enm(['opener', 'intro', 'discovery_question', 'other_question', 'statement', 'pitch', 'objection_response', 'trial_close', 'ask_for_sale', 'small_talk', 'off_call', 'none'],
+    "What the caller's latest line was. discovery_question = a real question about the owner's business, customers, goals or problems. ask_for_sale = a direct request for a commitment or concrete next step. off_call = breaking character / asking for coaching. none = no caller line yet."),
+  phase: enm(PHASES.map(p => p.id), 'Which phase of a sales call this is in now, after the caller\'s latest line'),
+  mood: enm(Object.keys(MOODS), 'How you feel about this caller right now'),
+  say: str('What you say out loud, 1–3 short spoken sentences'),
+  hang_up: { type: 'boolean' },
+});
+
+/* ---------- voice out ---------- */
+let voices = [];
+const NOVELTY = /bells|bubbles|zarvox|whisper|bad news|good news|jester|organ|trinoids|boing|cellos|superstar|wobble|albert|bahh|hysterical|deranged|pipe|eddy|flo|grandma|grandpa|reed|rocko|sandy|shelley/i;
+const FEMALE = /samantha|victoria|karen|moira|tessa|fiona|veena|allison|ava|susan|zira|female|serena|kate|joanna|salli|kimberly|nicky|aria|jenny|michelle|emma|libby|sonia|natasha|clara|catherine|martha|hazel|heera/i;
+const MALE = /\bmale\b|daniel|alex|fred|\btom\b|oliver|aaron|arthur|rishi|gordon|\blee\b|david|mark|\bguy\b|ryan|eric|christopher|roger|william|brian|matthew|justin|joey|thomas|liam|george|james/i;
+function loadVoices() {
+  try { voices = speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang) && !NOVELTY.test(v.name)); } catch { voices = []; }
+}
+if ('speechSynthesis' in window) { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
+
+function voiceFor(p) {
+  if (settings.voiceName) { const v = voices.find(v => v.name === settings.voiceName); if (v) return v; }
+  if (!voices.length) return null;
+  const female = voices.filter(v => FEMALE.test(v.name));
+  const male = voices.filter(v => !FEMALE.test(v.name) && MALE.test(v.name));
+  let pool = p.voice_gender === 'female' ? female : male;
+  if (!pool.length) pool = voices;
+  return pool[hash(p.name) % pool.length];
+}
+
+let currentUtterance = null; // kept referenced so Chrome doesn't drop onend
+function speak(text, p) {
+  return new Promise(resolve => {
+    if (!settings.voiceOn || !('speechSynthesis' in window)) return resolve();
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    const v = p ? voiceFor(p) : null;
+    if (v) u.voice = v;
+    u.pitch = p ? p.voice_pitch : 1;
+    u.rate = (p ? p.voice_rate : 1) * (settings.rate || 1);
+    let done = false;
+    const finish = () => { if (!done) { done = true; clearTimeout(guard); resolve(); } };
+    const guard = setTimeout(finish, 4000 + text.length * 120);
+    u.onend = finish; u.onerror = finish;
+    currentUtterance = u;
+    speechSynthesis.speak(u);
+  });
+}
+
+/* ---------- ringing ---------- */
+let audioCtx = null;
+function startRinging() {
+  let stopped = false;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const ringOnce = () => {
+      if (stopped) return;
+      const t = audioCtx.currentTime;
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.06, t + 0.05);
+      g.gain.setValueAtTime(0.06, t + 1.9);
+      g.gain.linearRampToValueAtTime(0, t + 2);
+      g.connect(audioCtx.destination);
+      [440, 480].forEach(f => { const o = audioCtx.createOscillator(); o.frequency.value = f; o.connect(g); o.start(t); o.stop(t + 2); });
+    };
+    ringOnce();
+    const id = setInterval(ringOnce, 4000);
+    return () => { stopped = true; clearInterval(id); };
+  } catch { return () => {}; }
+}
+
+/* ---------- call state ---------- */
+let call = null;
+
+function buildConfig(mode, opts = {}) {
+  let difficulty = opts.difficulty || 'realistic';
+  if (mode === 'random') difficulty = brutalUnlocked() && Math.random() < 0.25 ? 'brutal' : 'realistic';
+  if (difficulty === 'brutal' && !brutalUnlocked()) difficulty = 'realistic';
+  const archetype = opts.archetype ? ARCHETYPES.find(a => a.id === opts.archetype) : pick(ARCHETYPES);
+  const industry = opts.industry || pick(INDUSTRIES);
+  const objection = mode === 'drill' ? (opts.objection || pick(OBJECTIONS)) : null;
+  return { mode, difficulty, archetype, industry, objection, opts };
+}
+
+async function startCall(cfg) {
+  hideError();
+  call = {
+    cfg, persona: null, messages: [], turns: [], startedAt: null, busy: true, ended: false,
+    phasesSeen: new Set(), currentPhase: 'opener', discoveryCount: 0, questionCount: 0, statementCount: 0,
+    askedForSale: false, trialClose: false, openerSecs: null, mood: 'guarded', rep: 1, reps: [], timerId: null, outcome: null,
+  };
+  show('call');
+  $('call-mode-label').textContent = modeLabel(cfg);
+  $('next-rep').classList.toggle('hidden', cfg.mode !== 'drill');
+  $('next-rep').textContent = 'Next rep';
+  $('timer').textContent = '0:00';
+  $('persona-card').innerHTML = `<div class="persona"><div class="avatar" style="background:var(--panel-2)"><div class="spinner" style="width:22px;height:22px;border-width:2px"></div></div><div><div class="name">Calling…</div><div class="sub">Dialing a ${esc(cfg.industry)}</div></div></div>`;
+  $('transcript').innerHTML = '';
+  setPtt('Connecting…', true);
+  renderCoach();
+
+  const stopRing = cfg.mode === 'drill' ? () => {} : startRinging();
+  try {
+    call.persona = await generatePersona(cfg);
+  } catch (e) {
+    stopRing();
+    call = null;
+    show('home');
+    showError(e instanceof FriendlyError ? e.message : 'Something went wrong starting the call: ' + e.message);
+    return;
+  }
+  stopRing();
+  if (!call || call.ended) return;
+  call.system = personaSystemPrompt(call.persona, cfg);
+  renderPersona();
+  call.startedAt = Date.now();
+  call.timerId = setInterval(() => { $('timer').textContent = fmt(elapsed()); }, 500);
+
+  if (cfg.mode === 'drill') {
+    await startRep();
+  } else {
+    const pickup = call.persona.pickup_line;
+    call.messages.push({ role: 'user', content: '[Call notes — from the training software, not spoken: the phone rings and you pick up.]' });
+    call.messages.push({ role: 'assistant', content: JSON.stringify({ caller_move: 'none', phase: 'opener', mood: 'guarded', say: pickup, hang_up: false }) });
+    addTurn('them', pickup);
+    call.busy = false;
+    setPtt('Hold to talk', false);
+    await speak(pickup, call.persona);
+  }
+}
+
+function modeLabel(cfg) {
+  const d = cfg.difficulty[0].toUpperCase() + cfg.difficulty.slice(1);
+  if (cfg.mode === 'drill') return `Objection drill · ${d}`;
+  if (cfg.mode === 'scenario') return `Scenario · ${d}`;
+  return `Random call · ${d}`;
+}
+
+const elapsed = () => (call && call.startedAt ? (Date.now() - call.startedAt) / 1000 : 0);
+
+async function startRep() {
+  call.messages = [];
+  addTurn('sys', `Rep ${call.rep} of ${DRILL_REPS}`);
+  call.messages.push({ role: 'user', content: `[Call notes — from the training software, not spoken: segment ${call.rep} of ${DRILL_REPS} begins. The caller just finished a quick intro and pitch. Speak first and raise your objection.]` });
+  await ownerTurn();
+}
+
+function addTurn(who, text, extra = {}) {
+  const turn = { who, text, t: elapsed(), rep: call.rep, ...extra };
+  call.turns.push(turn);
+  renderTranscript();
+  return turn;
+}
+
+async function handleCallerUtterance(text, meta = {}) {
+  text = text.trim();
+  if (!call || call.ended || call.busy) return;
+  if (!text) { flashHelp("Didn't catch that — hold the button a little longer and speak clearly."); return; }
+  const isFirst = !call.turns.some(t => t.who === 'me');
+  const turn = addTurn('me', text, { dur: meta.dur });
+  if (isFirst && meta.dur) call.openerSecs = Math.round(meta.dur);
+
+  const notes = [`elapsed ${fmt(elapsed())}`, `discovery questions the caller has asked so far (before this line): ${call.discoveryCount}`];
+  if (meta.cutoff) notes.push('the caller talked for over 20 seconds without stopping; you cut them off mid-sentence');
+  if (meta.bargedIn) notes.push('the caller talked over you before you finished');
+  if (call.cfg.mode === 'drill') notes.push(`segment ${call.rep} of ${DRILL_REPS}`);
+  call.messages.push({ role: 'user', content: `${text}\n\n[Call notes — from the training software, not spoken: ${notes.join('; ')}.]` });
+
+  const ok = await ownerTurn(turn);
+  if (!ok) {
+    // roll back so the caller can retry
+    call.messages.pop();
+    call.turns = call.turns.filter(t => t !== turn);
+    renderTranscript();
+    $('type-input').value = text;
+  }
+}
+
+async function ownerTurn(callerTurn) {
+  call.busy = true;
+  setPtt(`${call.persona.name.split(' ')[0]} is responding…`, true);
+  showTyping(true);
+  let res;
+  try {
+    res = await callClaude({ system: call.system, messages: call.messages, maxTokens: 1500, effort: 'low', schema: TURN_SCHEMA });
+  } catch (e) {
+    showTyping(false);
+    call.busy = false;
+    setPtt('Hold to talk', false);
+    showError((e instanceof FriendlyError ? e.message : 'Unexpected error: ' + e.message) + (callerTurn ? ' Your line is back in the text box — press Enter to resend.' : ''));
+    return false;
+  }
+  showTyping(false);
+  if (!call || call.ended) return true;
+  hideError();
+  const r = res.json;
+  call.messages.push({ role: 'assistant', content: res.raw });
+  if (callerTurn) applyAnalysis(callerTurn, r);
+  if (r.mood && MOODS[r.mood]) call.mood = r.mood;
+  renderPersona();
+  addTurn('them', r.say);
+  renderCoach();
+  call.busy = false;
+  setPtt('Hold to talk', false);
+  await speak(r.say, call.persona);
+  if (r.hang_up && call && !call.ended) {
+    addTurn('sys', `${call.persona.name.split(' ')[0]} hung up`);
+    if (call.cfg.mode === 'drill' && call.rep < DRILL_REPS) { setPtt('Rep over — press Next rep', true); }
+    else { call.outcome = 'hung_up'; setTimeout(() => endCall(), 900); }
+  }
+  return true;
+}
+
+function applyAnalysis(turn, r) {
+  turn.move = r.caller_move;
+  switch (r.caller_move) {
+    case 'discovery_question': call.discoveryCount++; call.questionCount++; break;
+    case 'other_question': call.questionCount++; break;
+    case 'ask_for_sale': call.askedForSale = true; call.statementCount++; break;
+    case 'trial_close': call.trialClose = true; call.questionCount++; break;
+    case 'none': case 'off_call': break;
+    default: call.statementCount++;
+  }
+  if (r.phase) { call.currentPhase = r.phase; call.phasesSeen.add(r.phase); }
+  if (r.caller_move === 'opener' || call.turns.filter(t => t.who === 'me').length === 1) call.phasesSeen.add('opener');
+  if (r.caller_move === 'intro') call.phasesSeen.add('intro');
+  if (r.caller_move === 'pitch') call.phasesSeen.add('pitch');
+  if (r.caller_move === 'objection_response') call.phasesSeen.add('objection');
+}
+
+/* ---------- push to talk ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null, recFinal = '', recInterim = '', talking = false, talkStart = 0, micBlocked = false, cutoffTimer = null, cutoffHit = false, bargedIn = false;
+
+function startTalk() {
+  if (!call || call.ended || call.busy || talking || $('ptt').disabled) return;
+  if (!SR) { showError("Voice input isn't available in this browser. Use Chrome or Edge — or type your lines in the box below."); return; }
+  if (!window.isSecureContext) { showError('The microphone needs a secure page. Open this app at http://localhost (see the comment at the top of the file).'); return; }
+  bargedIn = 'speechSynthesis' in window && speechSynthesis.speaking;
+  if (bargedIn) speechSynthesis.cancel();
+  hideError();
+  talking = true; cutoffHit = false; recFinal = ''; recInterim = ''; talkStart = Date.now(); micBlocked = false;
+  setPtt('Listening… release to send', false, true);
+  renderLive();
+  rec = new SR();
+  rec.lang = 'en-US';
+  rec.continuous = true;
+  rec.interimResults = true;
+  rec.onresult = e => {
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const r = e.results[i];
+      if (r.isFinal) recFinal += r[0].transcript + ' ';
+      else interim += r[0].transcript;
+    }
+    recInterim = interim;
+    renderLive();
+  };
+  rec.onerror = e => {
+    if (e.error === 'no-speech' || e.error === 'aborted') return;
+    micBlocked = true; talking = false;
+    const m = {
+      'not-allowed': 'Microphone access is blocked. Click the camera/mic icon in the address bar, allow the microphone, and reload.',
+      'service-not-allowed': 'Microphone access is blocked. Click the camera/mic icon in the address bar, allow the microphone, and reload.',
+      'audio-capture': 'No microphone was found. Plug one in or check your system sound settings.',
+      'network': "Chrome's speech recognition couldn't reach its server. Check your connection, or type instead.",
+      'language-not-supported': 'Speech recognition does not support this language setting.',
+    }[e.error] || `Speech recognition error: ${e.error}`;
+    showError(m);
+  };
+  rec.onend = () => {
+    if (talking && !micBlocked) { try { rec.start(); } catch {} return; } // browser stopped early; keep listening
+    finishTalk();
+  };
+  try { rec.start(); } catch (err) { talking = false; showError('Could not start the microphone: ' + err.message); setPtt('Hold to talk', false); return; }
+  if (call.cfg.difficulty === 'brutal') {
+    cutoffTimer = setTimeout(() => { cutoffHit = true; stopTalk(); }, BRUTAL_CUTOFF_MS);
+  }
+}
+
+function stopTalk() {
+  if (!talking) return;
+  talking = false;
+  clearTimeout(cutoffTimer);
+  try { rec.stop(); } catch { finishTalk(); }
+}
+
+function finishTalk() {
+  if (!rec) return;
+  rec = null;
+  const live = document.querySelector('.msg.live');
+  if (live) live.remove();
+  if (micBlocked) { setPtt('Hold to talk', false); return; }
+  const text = (recFinal + ' ' + recInterim).replace(/\s+/g, ' ').trim();
+  const dur = (Date.now() - talkStart) / 1000;
+  setPtt('Hold to talk', false);
+  handleCallerUtterance(text, { dur, cutoff: cutoffHit, bargedIn });
+}
+
+function setPtt(label, disabled, on = false) {
+  const b = $('ptt');
+  b.textContent = label;
+  b.disabled = disabled;
+  b.classList.toggle('on', on);
+  $('type-input').disabled = disabled && !on;
+  $('type-send').disabled = disabled && !on;
+}
+
+function flashHelp(msg) {
+  const h = $('ptt-help');
+  const orig = 'Hold the button or hold <b>Space</b> to talk. Release to send.';
+  h.textContent = msg; h.style.color = 'var(--amber)';
+  setTimeout(() => { h.innerHTML = orig; h.style.color = ''; }, 3500);
+}
+
+const ptt = $('ptt');
+ptt.addEventListener('pointerdown', e => { e.preventDefault(); try { ptt.setPointerCapture(e.pointerId); } catch {} startTalk(); });
+['pointerup', 'pointercancel'].forEach(ev => ptt.addEventListener(ev, () => stopTalk()));
+ptt.addEventListener('contextmenu', e => e.preventDefault());
+
+document.addEventListener('keydown', e => {
+  if (e.code !== 'Space' || currentView !== 'call' || e.repeat) return;
+  if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName) || !$('settings-modal').classList.contains('hidden')) return;
+  e.preventDefault();
+  startTalk();
+});
+document.addEventListener('keyup', e => {
+  if (e.code !== 'Space' || !talking) return;
+  e.preventDefault();
+  stopTalk();
+});
+window.addEventListener('blur', () => stopTalk());
+
+function sendTyped() {
+  const v = $('type-input').value;
+  if (!v.trim() || !call || call.busy) return;
+  if ('speechSynthesis' in window && speechSynthesis.speaking) speechSynthesis.cancel();
+  $('type-input').value = '';
+  handleCallerUtterance(v, {});
+}
+$('type-send').onclick = sendTyped;
+$('type-input').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); sendTyped(); } });
+
+/* ---------- call rendering ---------- */
+function avatarColor(name) { return `hsl(${hash(name) % 360} 45% 38%)`; }
+function initials(name) { return name.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase(); }
+
+function renderPersona() {
+  const p = call.persona;
+  const [color, label] = MOODS[call.mood] || MOODS.neutral;
+  $('persona-card').innerHTML = `
+    <div class="persona">
+      <div class="avatar" style="background:${avatarColor(p.name)}">${esc(initials(p.name))}</div>
+      <div style="min-width:0">
+        <div class="name">${esc(p.card_summary)}</div>
+        <div class="sub">${esc(p.business_name)} · ${esc(p.neighborhood)} · ${esc(p.years_in_business)} yrs in business</div>
+        <div class="mood"><i style="background:${color}"></i>${esc(label)}</div>
+      </div>
+    </div>`;
+}
+
+function renderTranscript() {
+  const box = $('transcript');
+  const firstName = call.persona ? call.persona.name.split(' ')[0] : 'Owner';
+  box.innerHTML = call.turns.map(t => {
+    if (t.who === 'sys') return `<div class="msg sys">${esc(t.text)}</div>`;
+    const who = t.who === 'me' ? (settings.myName || 'You') : firstName;
+    return `<div class="msg ${t.who}"><div class="who">${esc(who)} · ${fmt(t.t)}</div>${esc(t.text)}</div>`;
+  }).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+function renderLive() {
+  const box = $('transcript');
+  let live = box.querySelector('.msg.live');
+  if (!live) { live = document.createElement('div'); live.className = 'msg me live'; box.appendChild(live); }
+  const text = (recFinal + ' ' + recInterim).trim();
+  live.innerHTML = `<div class="who">${esc(settings.myName || 'You')} · speaking</div>${esc(text) || '<span class="muted">…</span>'}`;
+  box.scrollTop = box.scrollHeight;
+}
+
+function showTyping(on) {
+  const box = $('transcript');
+  const ex = box.querySelector('.typing');
+  if (ex) ex.remove();
+  if (on) {
+    const d = document.createElement('div');
+    d.className = 'msg them typing';
+    d.innerHTML = '<span></span><span></span><span></span>';
+    box.appendChild(d);
+    box.scrollTop = box.scrollHeight;
+  }
+}
+
+function renderCoach() {
+  const c = call;
+  const drill = c.cfg.mode === 'drill';
+  $('phases').innerHTML = PHASES.map(ph => {
+    let done = c.phasesSeen.has(ph.id);
+    let meta = ph.d;
+    if (ph.id === 'opener' && c.openerSecs != null) meta = `${c.openerSecs}s ${c.openerSecs <= 30 ? '✓ under 30s' : '— over 30s, tighten it'}`;
+    if (ph.id === 'discovery') { done = c.discoveryCount >= 2; meta = `${c.discoveryCount} question${c.discoveryCount === 1 ? '' : 's'} asked${c.discoveryCount < 2 ? ' · ask 2+ before pitching' : ''}`; }
+    if (ph.id === 'close') { done = c.askedForSale; meta = c.askedForSale ? 'You asked for the sale ✓' : (c.trialClose ? 'Trial close ✓ — now ask directly' : ph.d); }
+    const current = ph.id === c.currentPhase && !c.ended;
+    const dimmed = drill && (ph.id === 'opener' || ph.id === 'intro');
+    return `<li class="${done ? 'done' : ''} ${current ? 'current' : ''}" style="${dimmed ? 'opacity:.4' : ''}">
+      <div class="box">${done ? '✓' : ''}</div>
+      <div><div class="t">${esc(ph.t)}</div><div class="meta">${esc(meta)}</div>${current ? `<div class="hint">${esc(ph.hint)}</div>` : ''}</div>
+    </li>`;
+  }).join('');
+  const ratio = c.statementCount ? (c.questionCount / c.statementCount).toFixed(1) : (c.questionCount ? '∞' : '—');
+  $('live-stats').innerHTML = `
+    <div class="kv"><span>Questions asked</span><span>${c.questionCount}</span></div>
+    <div class="kv"><span>Question : statement</span><span>${ratio}</span></div>
+    <div class="kv"><span>Asked for the sale</span><span>${c.askedForSale ? '<span style="color:var(--green)">Yes</span>' : 'Not yet'}</span></div>
+    ${drill ? `<div class="kv"><span>Rep</span><span>${c.rep} / ${DRILL_REPS}</span></div>` : ''}`;
+}
+
+$('next-rep').onclick = async () => {
+  if (!call || call.busy) return;
+  if (talking) stopTalk();
+  window.speechSynthesis?.cancel();
+  if (call.rep >= DRILL_REPS) { endCall(); return; }
+  call.rep++;
+  if (call.rep === DRILL_REPS) $('next-rep').textContent = 'Finish drill';
+  renderCoach();
+  await startRep();
+};
+$('end-call').onclick = () => endCall();
+
+/* ---------- grading ---------- */
+const GRADE_SCHEMA = obj({
+  scores: obj({
+    opener: { type: 'integer', description: '1–10, or 0 if not part of this session' },
+    discovery: { type: 'integer', description: '1–10, or 0 if not part of this session' },
+    listening: { type: 'integer', description: '1–10' },
+    objection_handling: { type: 'integer', description: '1–10, or 0 if no objection came up' },
+    close_attempt: { type: 'integer', description: '1–10' },
+    rapport: { type: 'integer', description: '1–10' },
+  }),
+  asked_for_sale: { type: 'boolean', description: 'Did the caller directly ask for a commitment or concrete next step (meeting, shoot, trial, signing)?' },
+  asked_for_sale_quote: str('The exact caller line where they asked, or empty string'),
+  outcome: enm(['hung_up', 'no_interest', 'maybe_later', 'follow_up_agreed', 'meeting_booked', 'sale']),
+  summary: str('2 sentences: how the call went overall, plain and direct'),
+  did_well: { type: 'array', items: obj({ point: str('Specific thing done well'), quote: str('Caller line that shows it, or empty') }), description: 'Exactly 2 items' },
+  fix_next: obj({ issue: str('The single most important thing to fix next rep'), why: str('Why it matters, tied to this call'), try_saying: str('A concrete line they could say instead, in their voice') }),
+  drill: str('One specific practice drill for the next rep'),
+  hidden_agenda_reveal: str("What this owner was secretly hoping to hear and whether the caller got near it, 1–2 sentences"),
+});
+
+function transcriptText(c) {
+  const me = settings.myName || 'Caller';
+  const owner = c.persona.name.split(' ')[0];
+  return c.turns.map(t => t.who === 'sys' ? `--- ${t.text} ---` : `[${fmt(t.t)}] ${t.who === 'me' ? `${me} (caller)` : `${owner} (owner)`}: ${t.text}`).join('\n');
+}
+
+async function gradeCall(c) {
+  const p = c.persona;
+  const drill = c.cfg.mode === 'drill';
+  const system = `You are a blunt, warm, experienced sales coach who trains people selling services to local small-business owners. You review practice calls and help a beginner get better one rep at a time.
+
+Grade honestly against what a strong local salesperson would do. Most beginner calls land between 3 and 6; reserve 8+ for genuinely skilled moments. Don't inflate scores to be nice — specific, true feedback is what helps. Be concrete: point to what they actually said.
+
+What good looks like:
+- Opener: permission-based ("did I catch you at a bad time?"), relaxed, under ~30 seconds before the first real question.
+- Intro: who they are and why they're calling *this* business, briefly.
+- Discovery: several real questions about the business, customers, and goals before pitching.
+- Listening: more questions than statements; follow-ups that build on the owner's answers.
+- Pitch: tied to what the owner said ("you mentioned…"), not a generic monologue.
+- Objection handling: acknowledge, ask about it, then answer; no arguing.
+- Close: a trial close, then a direct ask for a concrete next step. Many beginners never ask — flag it clearly if they didn't.
+- Rapport: genuine, adapts to the owner's personality and values, comfortable with anyone.
+${drill ? '\nThis was an OBJECTION DRILL: several short segments where the owner opened with the same objection and the caller handled it. Score opener and discovery 0 (not part of the drill). Focus on objection handling across reps, and note whether they improved from rep to rep. "asked_for_sale" means they pushed for a next step in at least one rep.' : ''}`;
+  const metrics = {
+    duration: fmt(elapsed()),
+    discovery_questions: c.discoveryCount,
+    questions: c.questionCount,
+    statements: c.statementCount,
+    opener_seconds: c.openerSecs,
+    ended_by: c.outcome === 'hung_up' ? 'owner hung up' : 'caller ended the call',
+  };
+  const user = `WHAT THE CALLER SELLS
+${settings.pitch}
+
+THE OWNER (the caller didn't know any of this in advance)
+${JSON.stringify({ name: p.name, age: p.age, business: `${p.business_name} — ${p.industry}`, personality: p.personality, attitude_to_sales: p.attitude_to_sales, values_texture: p.values_texture, objections: p.objections, win_condition: p.win_condition }, null, 2)}
+
+DIFFICULTY: ${c.cfg.difficulty}
+METRICS FROM THE CALL: ${JSON.stringify(metrics)}
+
+TRANSCRIPT (from speech recognition; ignore small transcription errors)
+${transcriptText(c)}`;
+  const { json } = await callClaude({ system, messages: [{ role: 'user', content: user }], maxTokens: 8000, effort: 'medium', schema: GRADE_SCHEMA });
+  return json;
+}
+
+async function endCall() {
+  if (!call || call.ended) return;
+  if (talking) stopTalk();
+  call.ended = true;
+  clearInterval(call.timerId);
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  const c = call;
+  const callerTurns = c.turns.filter(t => t.who === 'me').length;
+  if (!c.persona || callerTurns === 0) { call = null; show('home'); showError('Call ended before you said anything, so there was nothing to score.'); return; }
+
+  show('score');
+  $('view-score').innerHTML = `<div class="card loading"><div class="spinner"></div><div>Your coach is reviewing the call…</div><div class="small muted">${callerTurns} of your lines · ${fmt(elapsed())}</div></div>`;
+  const durationSecs = Math.round(elapsed());
+  let grade;
+  try {
+    grade = await gradeCall(c);
+  } catch (e) {
+    $('view-score').innerHTML = `<div class="card"><h2>Couldn't score this call</h2><p class="muted">${esc(e instanceof FriendlyError ? e.message : e.message)}</p>
+      <div class="row"><button class="btn primary" id="retry-grade">Try again</button><button class="btn" id="grade-home">Home</button></div></div>`;
+    $('retry-grade').onclick = () => { call = c; call.ended = false; endCall(); };
+    $('grade-home').onclick = () => { call = null; show('home'); };
+    return;
+  }
+  const vals = SCORE_KEYS.map(([k]) => grade.scores[k]).filter(v => v > 0);
+  const overall = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length * 10) / 10 : 0;
+  const entry = {
+    id: Date.now().toString(36),
+    date: new Date().toISOString(),
+    mode: c.cfg.mode, difficulty: c.cfg.difficulty, objection: c.cfg.objection,
+    setup: { mode: c.cfg.mode, opts: c.cfg.opts },
+    persona: c.persona,
+    durationSecs,
+    metrics: { discovery: c.discoveryCount, questions: c.questionCount, statements: c.statementCount, openerSecs: c.openerSecs },
+    grade, overall,
+    transcript: transcriptText(c),
+    turns: c.turns,
+  };
+  const wasLocked = !brutalUnlocked();
+  history.unshift(entry);
+  saveHistory();
+  call = null;
+  renderScorecard(entry, wasLocked && brutalUnlocked());
+}
+
+/* ---------- scorecard ---------- */
+const scoreColor = v => v >= 7 ? 'var(--green)' : v >= 5 ? 'var(--amber)' : 'var(--red)';
+
+function renderScorecard(e, justUnlocked = false) {
+  const g = e.grade, p = e.persona;
+  const ratio = e.metrics.statements ? (e.metrics.questions / e.metrics.statements).toFixed(1) : '—';
+  const outcomeLabel = { hung_up: 'Owner hung up', no_interest: 'Not interested', maybe_later: 'Maybe later', follow_up_agreed: 'Agreed to a follow-up', meeting_booked: 'Meeting booked', sale: 'Sale!' }[g.outcome] || g.outcome;
+  $('view-score').innerHTML = `
+    ${justUnlocked ? '<div class="banner warn">🔓 Brutal difficulty unlocked. Owners will interrupt, go cold, and stack objections.</div>' : ''}
+    <div class="card">
+      <div class="score-head">
+        <div><div class="big" style="color:${scoreColor(e.overall)}">${e.overall.toFixed(1)}</div><div class="small muted">overall / 10</div></div>
+        <div style="flex:1;min-width:220px">
+          <div style="font-weight:700;font-size:17px">${esc(p.card_summary)}</div>
+          <div class="small muted">${esc(modeLabel(e))}${e.objection ? ` · “${esc(e.objection)}”` : ''} · ${fmt(e.durationSecs)} · ${new Date(e.date).toLocaleString()}</div>
+          <div style="margin-top:6px"><span class="pill ${/meeting|sale|follow/.test(g.outcome) ? 'green' : ''}">${esc(outcomeLabel)}</span></div>
+        </div>
+      </div>
+      <p style="margin:14px 0 0">${esc(g.summary)}</p>
+      ${g.asked_for_sale
+        ? `<div class="flag good">✅ <b>You asked for the sale.</b>${g.asked_for_sale_quote ? `<div class="quote">“${esc(g.asked_for_sale_quote)}”</div>` : ''}</div>`
+        : `<div class="flag bad">🚩 <b>You never asked for the sale.</b> Most beginners don't. Next call, ask directly for a concrete next step — e.g. “Can I come by Thursday and shoot a sample reel for you?”</div>`}
+    </div>
+    <div class="two">
+      <div class="card">
+        <h2>Scores</h2>
+        <div class="bars">${SCORE_KEYS.map(([k, label]) => {
+          const v = g.scores[k];
+          return `<div class="bar"><span>${label}</span><div class="track"><div class="fill" style="width:${v * 10}%;background:${scoreColor(v)}"></div></div><b style="text-align:right">${v > 0 ? v : '—'}</b></div>`;
+        }).join('')}</div>
+        <div style="margin-top:14px">
+          <div class="kv"><span>Discovery questions</span><span>${e.metrics.discovery}</span></div>
+          <div class="kv"><span>Question : statement ratio</span><span>${ratio}</span></div>
+          ${e.metrics.openerSecs != null ? `<div class="kv"><span>Opener length</span><span>${e.metrics.openerSecs}s</span></div>` : ''}
+        </div>
+      </div>
+      <div class="card">
+        <h2>What you did well</h2>
+        <ul class="clean">${(g.did_well || []).slice(0, 2).map(d => `<li>${esc(d.point)}${d.quote ? `<div class="quote">“${esc(d.quote)}”</div>` : ''}</li>`).join('')}</ul>
+        <h2 style="margin-top:18px">Fix this next rep</h2>
+        <p style="margin:0"><b>${esc(g.fix_next.issue)}</b></p>
+        <p class="small muted" style="margin:4px 0">${esc(g.fix_next.why)}</p>
+        <p class="small" style="margin:6px 0 0">Try: <i>“${esc(g.fix_next.try_saying)}”</i></p>
+        <p class="small" style="margin:12px 0 0"><b>Drill:</b> ${esc(g.drill)}</p>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h2>What ${esc(p.name.split(' ')[0])} was really thinking</h2>
+      <p style="margin:0">${esc(g.hidden_agenda_reveal)}</p>
+      <p class="small muted" style="margin:8px 0 0">Objections: ${p.objections.map(o => `“${esc(o)}”`).join(', ')} · Would have won them over: ${esc(p.win_condition)}</p>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <details><summary>Full transcript</summary>
+        <div class="transcript" style="height:auto;max-height:none;padding:14px 0 0">${(e.turns || []).map(t => t.who === 'sys'
+          ? `<div class="msg sys">${esc(t.text)}</div>`
+          : `<div class="msg ${t.who}"><div class="who">${esc(t.who === 'me' ? (settings.myName || 'You') : p.name.split(' ')[0])} · ${fmt(t.t)}</div>${esc(t.text)}</div>`).join('')}</div>
+      </details>
+    </div>
+    <div class="row" style="margin-top:16px">
+      <button class="btn primary" id="sc-again">Call again (same setup)</button>
+      <button class="btn" id="sc-home">Home</button>
+    </div>`;
+  $('sc-again').onclick = () => startCall(buildConfig(e.setup?.mode || e.mode, e.setup?.opts || {}));
+  $('sc-home').onclick = () => show('home');
+}
+
+/* ---------- home / history ---------- */
+function trendSVG(entries) {
+  const pts = entries.slice(0, 30).reverse();
+  if (pts.length < 2) return `<p class="muted small" style="margin:10px 0 0">${pts.length ? 'One call down. Your trend shows up after the second.' : 'Finish a call to start tracking your scores.'}</p>`;
+  const W = 640, H = 150, pad = 24;
+  const x = i => pad + (i * (W - pad * 2)) / (pts.length - 1);
+  const y = v => H - pad - (v / 10) * (H - pad * 2);
+  const line = pts.map((e, i) => `${x(i).toFixed(1)},${y(e.overall).toFixed(1)}`).join(' ');
+  const grid = [0, 5, 10].map(v => `<line x1="${pad}" x2="${W - pad}" y1="${y(v)}" y2="${y(v)}" stroke="#212b38"/><text x="4" y="${y(v) + 4}" fill="#5d6a79" font-size="11">${v}</text>`).join('');
+  const dots = pts.map((e, i) => `<circle cx="${x(i)}" cy="${y(e.overall)}" r="4" fill="${e.grade.asked_for_sale ? '#22c55e' : '#0a0d12'}" stroke="#22c55e" stroke-width="2"><title>${esc(new Date(e.date).toLocaleDateString())} — ${e.overall}${e.grade.asked_for_sale ? ' (asked for the sale)' : ''}</title></circle>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="margin-top:8px;display:block">${grid}<polyline points="${line}" fill="none" stroke="#22c55e" stroke-width="2"/>${dots}</svg>
+    <div class="small muted">Filled dot = you asked for the sale.</div>`;
+}
+
+function renderHome() {
+  const n = history.length;
+  const last5 = history.slice(0, 5);
+  const avg = last5.length ? (last5.reduce((a, e) => a + e.overall, 0) / last5.length).toFixed(1) : '—';
+  const askRate = n ? Math.round(history.filter(e => e.grade.asked_for_sale).length / n * 100) + '%' : '—';
+  const best = n ? Math.max(...history.map(e => e.overall)).toFixed(1) : '—';
+  $('home-stats').innerHTML = [
+    ['Calls completed', n], ['Avg (last 5)', avg], ['Asked for the sale', askRate], ['Best score', best],
+  ].map(([k, v]) => `<div class="card stat"><div class="v">${v}</div><div class="k">${k}</div></div>`).join('');
+  $('home-trend').innerHTML = trendSVG(history);
+  $('unlock-note').textContent = brutalUnlocked() ? '🔓 Brutal unlocked' : `🔒 Brutal unlocks after ${BRUTAL_UNLOCK} calls (${n}/${BRUTAL_UNLOCK})`;
+}
+
+function renderHistory() {
+  $('hist-trend').innerHTML = trendSVG(history);
+  $('hist-list').innerHTML = history.length ? history.map((e, i) => `
+    <div class="hist-row" data-i="${i}">
+      <span class="small muted">${new Date(e.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · ${new Date(e.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+      <span>${esc(e.persona.card_summary)}</span>
+      <span class="hide-sm"><span class="pill">${esc(e.mode)} · ${esc(e.difficulty)}</span> ${e.grade.asked_for_sale ? '<span class="pill green">asked</span>' : '<span class="pill red">no ask</span>'}</span>
+      <b style="text-align:right;color:${scoreColor(e.overall)}">${e.overall.toFixed(1)}</b>
+    </div>`).join('') : '<p class="muted" style="padding:0 16px 16px">No calls yet.</p>';
+  document.querySelectorAll('.hist-row').forEach(r => r.onclick = () => { const e = history[+r.dataset.i]; show('score'); renderScorecard(e); });
+}
+
+/* ---------- setup ---------- */
+let setupMode = 'scenario', setupDifficulty = 'realistic';
+function openSetup(mode) {
+  setupMode = mode;
+  setupDifficulty = 'realistic';
+  $('setup-title').textContent = mode === 'drill' ? 'Objection drill' : 'Pick your scenario';
+  $('setup-objection-wrap').classList.toggle('hidden', mode !== 'drill');
+  $('setup-personality-wrap').classList.toggle('hidden', mode === 'drill');
+  $('setup-start').textContent = mode === 'drill' ? `Start drill (${DRILL_REPS} reps)` : 'Start call';
+  $('setup-objection').innerHTML = '<option value="">Random</option>' + OBJECTIONS.map(o => `<option>${esc(o)}</option>`).join('');
+  $('setup-industry').innerHTML = '<option value="">Random</option>' + INDUSTRIES.map(o => `<option>${esc(o)}</option>`).join('');
+  $('setup-personality').innerHTML = '<option value="">Random</option>' + ARCHETYPES.map(a => `<option value="${a.id}">${esc(a.label)}</option>`).join('');
+  renderDifficulty();
+  show('setup');
+}
+function renderDifficulty() {
+  document.querySelectorAll('#setup-difficulty button').forEach(b => {
+    b.classList.toggle('on', b.dataset.d === setupDifficulty);
+    if (b.dataset.d === 'brutal') { b.disabled = !brutalUnlocked(); b.textContent = brutalUnlocked() ? 'Brutal' : '🔒 Brutal'; }
+  });
+  $('setup-brutal-note').textContent = brutalUnlocked() ? '' : `Brutal unlocks after ${BRUTAL_UNLOCK} completed calls (${completedCount()}/${BRUTAL_UNLOCK}).`;
+}
+document.querySelectorAll('#setup-difficulty button').forEach(b => b.onclick = () => { setupDifficulty = b.dataset.d; renderDifficulty(); });
+$('setup-start').onclick = () => startCall(buildConfig(setupMode, {
+  industry: $('setup-industry').value || null,
+  archetype: setupMode === 'drill' ? null : ($('setup-personality').value || null),
+  objection: $('setup-objection').value || null,
+  difficulty: setupDifficulty,
+}));
+$('setup-cancel').onclick = () => show('home');
+
+$('mode-random').onclick = () => startCall(buildConfig('random'));
+$('mode-scenario').onclick = () => openSetup('scenario');
+$('mode-drill').onclick = () => openSetup('drill');
+$('brand').onclick = () => { if (currentView === 'call' && call && !call.ended) return; show('home'); };
+$('btn-history').onclick = () => { if (currentView === 'call' && call && !call.ended) return; show('history'); };
+
+/* ---------- settings ---------- */
+function openSettings() {
+  $('s-key').value = settings.apiKey;
+  $('s-model').value = settings.model;
+  $('s-name').value = settings.myName;
+  $('s-city').value = settings.city;
+  $('s-pitch').value = settings.pitch;
+  $('s-voice-on').checked = settings.voiceOn;
+  $('s-rate').value = settings.rate;
+  $('s-rate-v').textContent = `(${(+settings.rate).toFixed(2)}×)`;
+  loadVoices();
+  $('s-voice').innerHTML = '<option value="">Auto — different voice per owner</option>' + voices.map(v => `<option ${v.name === settings.voiceName ? 'selected' : ''}>${esc(v.name)}</option>`).join('');
+  $('settings-modal').classList.remove('hidden');
+}
+function closeSettings() { $('settings-modal').classList.add('hidden'); }
+$('btn-settings').onclick = openSettings;
+$('s-cancel').onclick = closeSettings;
+$('settings-modal').onclick = e => { if (e.target.id === 'settings-modal') closeSettings(); };
+$('s-key-show').onclick = () => { const k = $('s-key'); k.type = k.type === 'password' ? 'text' : 'password'; $('s-key-show').textContent = k.type === 'password' ? 'Show' : 'Hide'; };
+$('s-rate').oninput = () => { $('s-rate-v').textContent = `(${(+$('s-rate').value).toFixed(2)}×)`; };
+$('s-save').onclick = () => {
+  settings = {
+    ...settings,
+    apiKey: $('s-key').value.trim(),
+    model: $('s-model').value.trim() || DEFAULT_SETTINGS.model,
+    myName: $('s-name').value.trim(),
+    city: $('s-city').value.trim(),
+    pitch: $('s-pitch').value.trim() || DEFAULT_SETTINGS.pitch,
+    voiceOn: $('s-voice-on').checked,
+    voiceName: $('s-voice').value,
+    rate: +$('s-rate').value || 1,
+  };
+  if (!LS.set('ph_settings', settings)) showError("Couldn't save settings — localStorage is blocked in this browser.");
+  closeSettings();
+  renderEnv();
+};
+$('s-test-voice').onclick = () => {
+  const prev = settings;
+  settings = { ...settings, voiceOn: true, voiceName: $('s-voice').value, rate: +$('s-rate').value || 1 };
+  speak('Hello, this is the shop, how can I help you?', { name: 'Test', voice_gender: 'female', voice_pitch: 1, voice_rate: 1 });
+  settings = prev;
+};
+$('s-clear').onclick = () => {
+  if (!confirm('Delete all saved calls and scores? This cannot be undone.')) return;
+  history = []; saveHistory(); closeSettings(); show('home');
+};
+
+/* ---------- environment checks ---------- */
+function renderEnv() {
+  const msgs = [];
+  if (!window.isSecureContext) msgs.push('This page isn\'t in a secure context, so the microphone won\'t work. Serve it from localhost: run <code>python3 -m http.server 8777</code> in this folder and open <a href="http://localhost:8777">http://localhost:8777</a>.');
+  if (!SR) msgs.push('This browser doesn\'t support speech recognition. Use Chrome or Edge for voice — you can still type your lines.');
+  if (!settings.apiKey) msgs.push('Add your Anthropic API key in <a href="#" id="env-open-settings">Settings</a> to start practicing.');
+  $('env-banner').innerHTML = msgs.map(m => `<div class="banner warn">${m}</div>`).join('');
+  const link = $('env-open-settings');
+  if (link) link.onclick = e => { e.preventDefault(); openSettings(); };
+}
+
+window.addEventListener('beforeunload', e => { if (call && !call.ended && call.turns.length) { e.preventDefault(); e.returnValue = ''; } });
+
+renderEnv();
+show('home');
+</script>
+</body>
+</html>
