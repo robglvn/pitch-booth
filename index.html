@@ -282,7 +282,12 @@
 <div class="modal-bg hidden" id="settings-modal">
   <div class="card modal">
     <h2>Settings</h2>
-    <label for="s-key">Anthropic API key</label>
+    <div id="s-invite-wrap" class="hidden">
+      <label for="s-invite">Invite code</label>
+      <input id="s-invite" placeholder="from the person who invited you" autocomplete="off" spellcheck="false">
+      <div class="small muted" style="margin-top:4px">With an invite code you don't need an API key. Leave the key field below empty.</div>
+    </div>
+    <label for="s-key" id="s-key-label">Anthropic API key</label>
     <div class="row" style="flex-wrap:nowrap">
       <input id="s-key" type="password" placeholder="sk-ant-…" autocomplete="off" spellcheck="false">
       <button class="btn" id="s-key-show" style="flex:none">Show</button>
@@ -391,15 +396,34 @@ const PRICES = {
   'claude-opus-5': [5, 25, 0.1],
   'claude-fable-5-1': [10, 50, 0.025],
 };
-function addUsage(track, model, u) {
-  track.cost = track.cost || { cents: 0, uncachedCents: 0, known: true };
+function addUsage(track, model, u, role) {
+  track.cost = track.cost || { cents: 0, uncachedCents: 0, known: true, byRole: {} };
   const p = PRICES[model];
   if (!p || !u) { track.cost.known = false; return; }
   const inp = u.input_tokens || 0, read = u.cache_read_input_tokens || 0, write = u.cache_creation_input_tokens || 0, out = u.output_tokens || 0;
-  track.cost.cents += (inp * p[0] + read * p[0] * p[2] + write * p[0] * 1.25 + out * p[1]) / 1e4;
+  const cents = (inp * p[0] + read * p[0] * p[2] + write * p[0] * 1.25 + out * p[1]) / 1e4;
+  track.cost.cents += cents;
   track.cost.uncachedCents += ((inp + read + write) * p[0] + out * p[1]) / 1e4;
+  if (role) {
+    const r = (track.cost.byRole = track.cost.byRole || {})[role] ||= { cents: 0, requests: 0, outTokens: 0 };
+    r.cents += cents; r.requests++; r.outTokens += out;
+  }
 }
-const fmtCents = c => c < 100 ? `${c < 10 ? c.toFixed(1) : Math.round(c)}¢` : `$${(c / 100).toFixed(2)}`;
+
+// Set this to your Cloudflare Worker URL (see cloudflare/worker.js) so invited people only need an invite code.
+// Anyone who pastes their own API key in Settings still goes straight to Anthropic.
+const PROXY_URL = '';
+const usingProxy = () => !!PROXY_URL && !settings.apiKey;
+
+// Invite links look like …/please-hold/#invite=CODE. Save the code, then drop it from the address bar.
+(() => {
+  const m = location.hash.match(/invite=([\w-]+)/);
+  if (!m) return;
+  settings.inviteCode = m[1];
+  LS.set('ph_settings', settings);
+  try { window.history.replaceState(null, '', location.pathname + location.search); } catch {}
+})();
+const fmtCents = c => c > 0 && c < 0.1 ? '<0.1¢' : c < 100 ? `${c < 10 ? c.toFixed(1) : Math.round(c)}¢` : `$${(c / 100).toFixed(2)}`;
 let history = LS.get('ph_history', []);
 const saveHistory = () => { if (!LS.set('ph_history', history)) showError("Couldn't save to localStorage (storage full or blocked)."); };
 
@@ -473,8 +497,12 @@ const enm = (values, description) => ({ type: 'string', enum: values, descriptio
 
 class FriendlyError extends Error {}
 
-async function callClaude({ model, system, messages, maxTokens = 2000, effort, schema, cache = false, track }) {
-  if (!settings.apiKey) { openSettings(); throw new FriendlyError('Add your Anthropic API key in Settings first.'); }
+async function callClaude({ model, system, messages, maxTokens = 2000, effort, schema, cache = false, track, role }) {
+  const viaProxy = usingProxy();
+  if (viaProxy ? !settings.inviteCode : !settings.apiKey) {
+    openSettings();
+    throw new FriendlyError(viaProxy ? 'Enter your invite code in Settings first.' : 'Add your Anthropic API key in Settings first.');
+  }
   model = (model || DEFAULT_SETTINGS.personaModel).trim();
   let useFallbacks = FALLBACK_MODELS.has(model);
   let useEffort = !!effort && supportsEffort(model);
@@ -489,19 +517,16 @@ async function callClaude({ model, system, messages, maxTokens = 2000, effort, s
     if (useEffort) oc.effort = effort;
     if (schema) oc.format = { type: 'json_schema', schema };
     if (Object.keys(oc).length) body.output_config = oc;
-    const headers = {
-      'content-type': 'application/json',
-      'x-api-key': settings.apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    };
+    const headers = { 'content-type': 'application/json', 'anthropic-version': '2023-06-01' };
+    if (viaProxy) headers['x-invite-code'] = settings.inviteCode;
+    else { headers['x-api-key'] = settings.apiKey; headers['anthropic-dangerous-direct-browser-access'] = 'true'; }
     if (useFallbacks) { body.fallbacks = 'default'; headers['anthropic-beta'] = 'server-side-fallback-2026-07-01'; }
 
     let res, data;
     try {
-      res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers, body: JSON.stringify(body) });
+      res = await fetch(viaProxy ? PROXY_URL.replace(/\/$/, '') + '/v1/messages' : 'https://api.anthropic.com/v1/messages', { method: 'POST', headers, body: JSON.stringify(body) });
     } catch {
-      throw new FriendlyError("Couldn't reach api.anthropic.com. Check your internet connection and try again.");
+      throw new FriendlyError(`Couldn't reach ${viaProxy ? 'the practice server' : 'api.anthropic.com'}. Check your internet connection and try again.`);
     }
     try { data = await res.json(); } catch { data = null; }
 
@@ -511,9 +536,9 @@ async function callClaude({ model, system, messages, maxTokens = 2000, effort, s
       if (res.status === 400 && useFallbacks && /fallback/i.test(msg)) { useFallbacks = false; continue; }
       if (res.status === 400 && useEffort && /effort/i.test(msg)) { useEffort = false; continue; }
       if (res.status === 400 && useCache && /cache/i.test(msg)) { useCache = false; continue; }
-      throw new FriendlyError(friendlyApiError(res.status, msg, model));
+      throw new FriendlyError(friendlyApiError(res.status, msg, model, viaProxy, data?.error?.type));
     }
-    if (track) addUsage(track, model, data.usage);
+    if (track) addUsage(track, model, data.usage, role);
     if (data.stop_reason === 'refusal') throw new FriendlyError('Claude declined to continue this turn. Try rephrasing what you said.');
     const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
     if (!schema) return text;
@@ -526,7 +551,13 @@ async function callClaude({ model, system, messages, maxTokens = 2000, effort, s
   throw new FriendlyError('The API kept rejecting the request. Check the model ID in Settings.');
 }
 
-function friendlyApiError(status, msg, model) {
+function friendlyApiError(status, msg, model, viaProxy, type) {
+  if (viaProxy) {
+    if (type === 'invalid_invite') return "That invite code wasn't recognized. Check it in Settings, or ask the person who invited you for a new one.";
+    if (type === 'daily_limit' || type === 'bad_origin' || type === 'model_not_allowed') return msg;
+    if (status === 401) return 'The practice server\'s API key was rejected. Let the person who invited you know.';
+    if (status === 400 && /credit balance/i.test(msg)) return 'The practice server is out of API credits. Let the person who invited you know.';
+  }
   if (status === 401) return 'Your API key was rejected. Open Settings and paste a valid key from console.anthropic.com.';
   if (status === 403) return `This API key isn't allowed to make that request. ${msg}`;
   if (status === 404 || (status === 400 && /model/i.test(msg) && /not found|invalid|does not exist|unknown/i.test(msg))) return `The model "${model}" wasn't found. Check the model ID in Settings.`;
@@ -593,6 +624,7 @@ The objections should be ones this person would genuinely have given their situa
     effort: 'medium',
     schema: PERSONA_SCHEMA,
     track: call,
+    role: 'persona',
   });
   json.voice_pitch = clamp(json.voice_pitch, 0.75, 1.25, 1);
   json.voice_rate = clamp(json.voice_rate, 0.85, 1.2, 1);
@@ -741,7 +773,7 @@ async function startCall(cfg) {
     // Fixed for the whole call: caches are per model and per effort, so changing either mid-call would miss.
     models: { owner: roleModel('owner'), persona: roleModel('persona'), coach: roleModel('coach') },
     ownerEffort: settings.ownerEffort, coachEffort: settings.coachEffort, cache: settings.cache,
-    cost: { cents: 0, uncachedCents: 0, known: true },
+    cost: { cents: 0, uncachedCents: 0, known: true, byRole: {} },
   };
   show('call');
   $('call-mode-label').textContent = modeLabel(cfg);
@@ -836,7 +868,7 @@ async function ownerTurn(callerTurn) {
   showTyping(true);
   let res;
   try {
-    res = await callClaude({ model: call.models.owner, system: call.system, messages: call.messages, maxTokens: 1500, effort: call.ownerEffort, schema: TURN_SCHEMA, cache: call.cache, track: call });
+    res = await callClaude({ model: call.models.owner, system: call.system, messages: call.messages, maxTokens: 1500, effort: call.ownerEffort, schema: TURN_SCHEMA, cache: call.cache, track: call, role: 'owner' });
   } catch (e) {
     showTyping(false);
     call.busy = false;
@@ -1144,7 +1176,7 @@ METRICS FROM THE CALL: ${JSON.stringify(metrics)}
 
 TRANSCRIPT (from speech recognition; ignore small transcription errors)
 ${transcriptText(c)}`;
-  const { json } = await callClaude({ model: c.models.coach, system, messages: [{ role: 'user', content: user }], maxTokens: 12000, effort: c.coachEffort, schema: GRADE_SCHEMA, track: c });
+  const { json } = await callClaude({ model: c.models.coach, system, messages: [{ role: 'user', content: user }], maxTokens: 12000, effort: c.coachEffort, schema: GRADE_SCHEMA, track: c, role: 'coach' });
   return json;
 }
 
@@ -1202,7 +1234,8 @@ function costLine(e) {
   if (!c) return '';
   if (!c.known) return '<span class="small muted">· cost unknown for this model</span>';
   const saved = c.uncachedCents > 0 ? Math.round((1 - c.cents / c.uncachedCents) * 100) : 0;
-  return `<span class="small muted" title="Owner: ${esc(e.models?.owner)} · Persona: ${esc(e.models?.persona)} · Coach: ${esc(e.models?.coach)}">· cost ≈ ${fmtCents(c.cents)}${saved >= 5 ? ` (caching saved ${saved}%)` : ''}</span>`;
+  const parts = ['owner', 'persona', 'coach'].filter(r => c.byRole?.[r]).map(r => `${r} ${fmtCents(c.byRole[r].cents)}`).join(' · ');
+  return `<span class="small muted" title="Owner: ${esc(e.models?.owner)} · Persona: ${esc(e.models?.persona)} · Coach: ${esc(e.models?.coach)}">· cost ≈ ${fmtCents(c.cents)}${parts ? ` (${parts})` : ''}${saved >= 5 ? ` · caching saved ${saved}%` : ''}</span>`;
 }
 
 function renderScorecard(e, justUnlocked = false) {
@@ -1348,6 +1381,9 @@ $('btn-history').onclick = () => { if (currentView === 'call' && call && !call.e
 /* ---------- settings ---------- */
 function openSettings() {
   $('s-key').value = settings.apiKey;
+  $('s-invite-wrap').classList.toggle('hidden', !PROXY_URL);
+  $('s-invite').value = settings.inviteCode || '';
+  $('s-key-label').textContent = PROXY_URL ? 'Your own Anthropic API key (optional)' : 'Anthropic API key';
   draftPreset = settings.preset;
   ['owner', 'persona', 'coach'].forEach(r => { $(`s-${r}-model`).value = roleModel(r); });
   $('s-owner-effort').value = settings.ownerEffort;
@@ -1388,6 +1424,7 @@ $('s-save').onclick = () => {
   settings = {
     ...settings,
     apiKey: $('s-key').value.trim(),
+    inviteCode: $('s-invite').value.trim(),
     preset: draftPreset,
     ownerModel: $('s-owner-model').value.trim() || DEFAULT_SETTINGS.ownerModel,
     personaModel: $('s-persona-model').value.trim() || DEFAULT_SETTINGS.personaModel,
@@ -1422,7 +1459,8 @@ function renderEnv() {
   const msgs = [];
   if (!window.isSecureContext) msgs.push('This page isn\'t in a secure context, so the microphone won\'t work. Serve it from localhost: run <code>python3 -m http.server 8777</code> in this folder and open <a href="http://localhost:8777">http://localhost:8777</a>.');
   if (!SR) msgs.push('This browser doesn\'t support speech recognition. Use Chrome or Edge for voice — you can still type your lines.');
-  if (!settings.apiKey) msgs.push('Add your Anthropic API key in <a href="#" id="env-open-settings">Settings</a> to start practicing.');
+  if (usingProxy() && !settings.inviteCode) msgs.push('Enter your invite code in <a href="#" id="env-open-settings">Settings</a> to start practicing.');
+  else if (!PROXY_URL && !settings.apiKey) msgs.push('Add your Anthropic API key in <a href="#" id="env-open-settings">Settings</a> to start practicing.');
   $('env-banner').innerHTML = msgs.map(m => `<div class="banner warn">${m}</div>`).join('');
   const link = $('env-open-settings');
   if (link) link.onclick = e => { e.preventDefault(); openSettings(); };
