@@ -423,7 +423,6 @@ const usingProxy = () => !!PROXY_URL && !settings.apiKey;
   LS.set('ph_settings', settings);
   try { window.history.replaceState(null, '', location.pathname + location.search); } catch {}
 })();
-const fmtCents = c => c > 0 && c < 0.1 ? '<0.1¢' : c < 100 ? `${c < 10 ? c.toFixed(1) : Math.round(c)}¢` : `$${(c / 100).toFixed(2)}`;
 let history = LS.get('ph_history', []);
 const saveHistory = () => { if (!LS.set('ph_history', history)) showError("Couldn't save to localStorage (storage full or blocked)."); };
 
@@ -1229,14 +1228,6 @@ async function endCall() {
 /* ---------- scorecard ---------- */
 const scoreColor = v => v >= 7 ? 'var(--green)' : v >= 5 ? 'var(--amber)' : 'var(--red)';
 
-function costLine(e) {
-  const c = e.cost;
-  if (!c) return '';
-  if (!c.known) return '<span class="small muted">· cost unknown for this model</span>';
-  const saved = c.uncachedCents > 0 ? Math.round((1 - c.cents / c.uncachedCents) * 100) : 0;
-  const parts = ['owner', 'persona', 'coach'].filter(r => c.byRole?.[r]).map(r => `${r} ${fmtCents(c.byRole[r].cents)}`).join(' · ');
-  return `<span class="small muted" title="Owner: ${esc(e.models?.owner)} · Persona: ${esc(e.models?.persona)} · Coach: ${esc(e.models?.coach)}">· cost ≈ ${fmtCents(c.cents)}${parts ? ` (${parts})` : ''}${saved >= 5 ? ` · caching saved ${saved}%` : ''}</span>`;
-}
 
 function renderScorecard(e, justUnlocked = false) {
   const g = e.grade, p = e.persona;
@@ -1250,7 +1241,7 @@ function renderScorecard(e, justUnlocked = false) {
         <div style="flex:1;min-width:220px">
           <div style="font-weight:700;font-size:17px">${esc(p.card_summary)}</div>
           <div class="small muted">${esc(modeLabel(e))}${e.objection ? ` · “${esc(e.objection)}”` : ''} · ${fmt(e.durationSecs)} · ${new Date(e.date).toLocaleString()}</div>
-          <div style="margin-top:6px"><span class="pill ${/meeting|sale|follow/.test(g.outcome) ? 'green' : ''}">${esc(outcomeLabel)}</span> ${costLine(e)}</div>
+          <div style="margin-top:6px"><span class="pill ${/meeting|sale|follow/.test(g.outcome) ? 'green' : ''}">${esc(outcomeLabel)}</span></div>
         </div>
       </div>
       <p style="margin:14px 0 0">${esc(g.summary)}</p>
@@ -1325,8 +1316,7 @@ function renderHome() {
     ['Calls completed', n], ['Avg (last 5)', avg], ['Asked for the sale', askRate], ['Best score', best],
   ].map(([k, v]) => `<div class="card stat"><div class="v">${v}</div><div class="k">${k}</div></div>`).join('');
   $('home-trend').innerHTML = trendSVG(history);
-  const spent = history.reduce((a, e) => a + (e.cost?.known ? e.cost.cents : 0), 0);
-  $('unlock-note').textContent = (brutalUnlocked() ? '🔓 Brutal unlocked' : `🔒 Brutal unlocks after ${BRUTAL_UNLOCK} calls (${n}/${BRUTAL_UNLOCK})`) + (spent ? ` · ≈ ${fmtCents(spent)} spent` : '');
+  $('unlock-note').textContent = (brutalUnlocked() ? '🔓 Brutal unlocked' : `🔒 Brutal unlocks after ${BRUTAL_UNLOCK} calls (${n}/${BRUTAL_UNLOCK})`);
 }
 
 function renderHistory() {
@@ -1407,7 +1397,7 @@ function renderPresets() {
   document.querySelectorAll('#s-preset button').forEach(b => b.classList.toggle('on', b.dataset.p === draftPreset));
   $('s-preset-note').textContent = draftPreset === 'custom'
     ? 'Custom: using the models under Fine-tuning. Click a preset to go back.'
-    : 'Cost estimates are rough; each scorecard shows what the call actually cost.';
+    : 'Cost estimates are rough. Real usage shows in your Anthropic console.';
 }
 document.querySelectorAll('#s-preset button').forEach(b => b.onclick = () => {
   draftPreset = b.dataset.p;
