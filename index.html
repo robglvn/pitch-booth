@@ -7,6 +7,9 @@
   welcome screen: requests then go straight to api.anthropic.com and history stays in this
   browser's localStorage.
 
+  Industries, their customer types and the four kinds of call (cold, interested lead, follow-up,
+  past customer) live in industries.js; each call mixes one customer type with random traits.
+
   Voice needs Chrome or Edge, microphone permission, and a secure page (https or localhost).
   Hold the big button (or Space) to talk, release to send. You can also type.
 -->
@@ -216,6 +219,36 @@
   .how .n { width: 30px; height: 30px; flex: none; border-radius: 50%; background: var(--panel-solid); color: var(--text); display: grid; place-items: center; font-family: var(--serif); font-size: 17px; box-shadow: var(--shadow), inset 0 0 0 1px var(--border); }
   .code-input { font-size: 24px; text-align: center; letter-spacing: .14em; padding: 15px; border-radius: 16px; }
   .btn.big { width: 100%; padding: 15px; font-size: 16px; margin-top: 14px; }
+  .q-top { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+  .q-top .small { flex: none; font-variant-numeric: tabular-nums; }
+  .q-progress { flex: 1; height: 4px; background: var(--panel-2); border-radius: 999px; overflow: hidden; }
+  .q-bar { height: 100%; background: var(--green); border-radius: 999px; transition: width .3s cubic-bezier(.2, .7, .2, 1); }
+  .q-nav { display: flex; justify-content: space-between; gap: 10px; margin-top: 16px; }
+  .q-nav .btn.primary { margin-left: auto; min-width: 140px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { background: var(--panel-solid); border: 1px solid var(--border-strong); border-radius: 999px; padding: 8px 14px; font-size: 14px; text-align: left; transition: background .15s, border-color .15s, color .15s; }
+  .chip:hover { border-color: var(--ink); }
+  .chip.on { background: var(--ink); border-color: var(--ink); color: #fffdfa; }
+  .small-chips { margin-top: 8px; }
+  .small-chips .chip { font-size: 12px; padding: 5px 11px; color: var(--muted); }
+  .choices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .choices.two-up { grid-template-columns: 1fr 1fr; }
+  .choice { display: flex; flex-direction: column; gap: 3px; text-align: left; background: var(--panel-solid); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 14px; transition: border-color .15s, box-shadow .15s; }
+  .choice:hover { border-color: var(--ink); }
+  .choice.on { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+  .choice .e { font-size: 22px; line-height: 1; margin-bottom: 6px; }
+  .choice b { font-size: 15px; }
+  .choice span:last-child { font-size: 12px; color: var(--muted); line-height: 1.35; }
+  @media (max-width: 520px) { .choices { grid-template-columns: 1fr; } }
+  .tune { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; background: rgba(228, 239, 231, .7); }
+  .tune b { font-family: var(--serif); font-weight: 400; font-size: 22px; display: block; line-height: 1.2; }
+  .brief { margin-top: 14px; padding: 10px 14px; border-radius: var(--radius-sm); background: var(--panel-2); font-size: 14px; color: var(--muted); }
+  .brief b { color: var(--text); font-weight: 600; }
+  .grid-calls { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
+  .home-more { margin-top: 14px; }
+  .home-more .btn { padding: 11px 20px; }
+  .choices.cats { grid-template-columns: 1fr 1fr; }
+  .choices.cats .choice b { font-size: 14px; }
   .code-note { background: var(--green-dim); color: #2f6248; border-radius: var(--radius-sm); padding: 12px 14px; font-size: 14px; margin-bottom: 6px; }
   .code-note b { font-family: "SF Mono", Menlo, Consolas, monospace; font-weight: 600; letter-spacing: .04em; }
   .w-err { color: var(--red); font-size: 14px; margin-top: 10px; min-height: 1em; }
@@ -282,9 +315,9 @@
   <section id="view-welcome" class="hidden">
     <div class="welcome" id="w-join">
       <h1>Practice your <em>sales calls</em></h1>
-      <p class="lead">Talk to a pretend business owner, then get a score and tips.</p>
+      <p class="lead">Talk to a pretend customer, then get a score and tips.</p>
       <ol class="how">
-        <li><span class="n">1</span>A business owner picks up the phone</li>
+        <li><span class="n">1</span>A pretend customer picks up the phone</li>
         <li><span class="n">2</span>You pitch them, out loud</li>
         <li><span class="n">3</span>You get a score and tips to get better</li>
       </ol>
@@ -305,18 +338,14 @@
       </details>
     </div>
     <div class="welcome hidden" id="w-about">
-      <h1>Nice to <em>meet you</em></h1>
-      <p class="lead">Two quick things so the coach can help you.</p>
-      <div class="card">
-        <div class="code-note hidden" id="p-code-note"></div>
-        <label for="p-name" style="margin-top:0">What's your name?</label>
-        <input id="p-name" placeholder="e.g. Maria" maxlength="80">
-        <label for="p-sells">What do you sell?</label>
-        <textarea id="p-sells" rows="4" placeholder="e.g. &quot;Photos and short videos for local restaurants. Monthly packages, a few hundred a month.&quot;"></textarea>
-        <label for="p-city">Your city <span style="color:var(--dim)">(optional)</span></label>
-        <input id="p-city" placeholder="e.g. San Antonio, TX" maxlength="120">
-        <div class="w-err" id="p-err"></div>
-        <button class="btn primary big" id="p-save">Start practicing</button>
+      <div class="q-top"><span class="small muted" id="q-count"></span><div class="q-progress"><div class="q-bar" id="q-bar"></div></div></div>
+      <h1 id="q-title"></h1>
+      <p class="lead" id="q-lead"></p>
+      <div class="card" id="q-body"></div>
+      <div class="w-err" id="p-err"></div>
+      <div class="q-nav">
+        <button class="btn" id="q-back">Back</button>
+        <button class="btn primary" id="q-next">Next</button>
       </div>
     </div>
   </section>
@@ -324,22 +353,15 @@
   <!-- HOME -->
   <section id="view-home">
     <h2 id="home-hello" class="hidden" style="font-size:22px;margin:0 0 14px"></h2>
-    <div class="grid3">
-      <button class="mode" id="mode-random">
-        <div class="tag">Like real life</div>
-        <h3>Random call</h3>
-        <p>A surprise business owner picks up. You don't know who until they answer.</p>
-      </button>
-      <button class="mode" id="mode-scenario">
-        <div class="tag">Targeted</div>
-        <h3>Pick your scenario</h3>
-        <p>Choose the industry, personality, and difficulty.</p>
-      </button>
-      <button class="mode" id="mode-drill">
-        <div class="tag">Reps</div>
-        <h3>Objection drill</h3>
-        <p>Skip the small talk. Handle one objection five times in a row.</p>
-      </button>
+    <div class="card tune hidden" id="home-tune">
+      <div><b>Make the calls fit what you sell</b><span class="small muted">A few quick questions, and the people you call will match your real customers.</span></div>
+      <button class="btn primary" id="home-tune-go">Answer the questions</button>
+    </div>
+    <div class="grid-calls" id="call-cards"></div>
+    <div class="row home-more">
+      <button class="btn primary" id="mode-random">🎲 Surprise me</button>
+      <button class="btn" id="mode-scenario">Pick your scenario</button>
+      <button class="btn" id="mode-drill">Objection drill</button>
     </div>
     <div class="stats" id="home-stats"></div>
     <div class="card" style="margin-top:14px">
@@ -356,8 +378,12 @@
         <label>Objection to drill</label>
         <select id="setup-objection"></select>
       </div>
-      <label>Industry</label>
-      <select id="setup-industry"></select>
+      <label>Kind of call</label>
+      <select id="setup-calltype"></select>
+      <div id="setup-type-wrap">
+        <label>Who picks up</label>
+        <select id="setup-type"></select>
+      </div>
       <div id="setup-personality-wrap">
         <label>Personality</label>
         <select id="setup-personality"></select>
@@ -433,12 +459,15 @@
     <h2>Settings</h2>
     <label for="s-name">Your name</label>
     <input id="s-name" placeholder="e.g. Rob">
-    <label for="s-pitch">What you sell</label>
-    <textarea id="s-pitch" rows="4"></textarea>
-    <div class="small muted" style="margin-top:4px">The coach uses this to judge your pitch.</div>
+    <div class="row" style="justify-content:space-between;margin-top:16px">
+      <label for="s-pitch" style="margin:0">Your practice brief</label>
+      <button class="btn" id="s-rebuild" style="padding:6px 14px;font-size:13px">Rebuild with questions</button>
+    </div>
+    <textarea id="s-pitch" rows="6" style="margin-top:6px"></textarea>
+    <div class="small muted" style="margin-top:4px">What the people you call and your coach know about what you sell.</div>
     <label for="s-city">Your city <span style="color:var(--dim)">(optional)</span></label>
     <input id="s-city" placeholder="e.g. San Antonio, TX">
-    <label class="row small" style="color:var(--text);margin-top:18px"><input type="checkbox" id="s-voice-on" style="width:auto"> Read the owner's replies out loud</label>
+    <label class="row small" style="color:var(--text);margin-top:18px"><input type="checkbox" id="s-voice-on" style="width:auto"> Read the other person's replies out loud</label>
     <details id="s-more" style="margin-top:16px">
     <summary>More options</summary>
     <label for="s-voice">Voice</label>
@@ -448,8 +477,8 @@
     <button class="btn" id="s-test-voice" style="margin-top:10px">Test voice</button>
     <label>AI quality</label>
     <div class="presets" id="s-preset">
-      <button data-p="realistic"><b>Most realistic</b><span>Sonnet plays the owner</span><em>est. 8–12¢ / call</em></button>
-      <button data-p="balanced"><b>Balanced</b><span>Haiku plays the owner; Sonnet builds them and coaches</span><em>est. 5–8¢ / call</em></button>
+      <button data-p="realistic"><b>Most realistic</b><span>Sonnet plays the customer</span><em>est. 8–12¢ / call</em></button>
+      <button data-p="balanced"><b>Balanced</b><span>Haiku plays the customer; Sonnet builds them and coaches</span><em>est. 5–8¢ / call</em></button>
       <button data-p="budget"><b>Budget</b><span>Haiku does everything</span><em>est. 1–2¢ / call</em></button>
     </div>
     <div class="small muted" id="s-preset-note" style="margin-top:6px"></div>
@@ -493,6 +522,7 @@
   </div>
 </div>
 
+<script src="industries.js"></script>
 <script>
 'use strict';
 
@@ -596,7 +626,7 @@ function fromServerCall(c) {
   const s = c.summary || {};
   return {
     id: c.id, remote: true, date: new Date(c.ts).toISOString(), mode: c.mode, difficulty: c.difficulty,
-    objection: s.objection, overall: c.overall, durationSecs: s.durationSecs, setup: s.setup,
+    objection: s.objection, overall: c.overall, durationSecs: s.durationSecs, setup: s.setup, callType: s.callType, customerType: s.customerType,
     grade: { asked_for_sale: c.asked_for_sale }, persona: { name: s.personaName, card_summary: s.card || '' },
   };
 }
@@ -607,13 +637,14 @@ async function loadProfile() {
   settings = { ...settings, ...pickPrefs(profile.prefs) };
   if (profile.name) settings.myName = profile.name;
   if (profile.sells) settings.pitch = profile.sells;
+  settings.seller = profile.seller && Object.keys(profile.seller).length ? profile.seller : undefined;
   settings.city = profile.city || '';
   history = d.calls.map(fromServerCall);
 }
 
 async function saveProfile() {
-  await api('/api/me', { method: 'PUT', body: JSON.stringify({ name: settings.myName, sells: settings.pitch, city: settings.city, prefs: pickPrefs(settings) }) });
-  profile = { ...profile, name: settings.myName, sells: settings.pitch, city: settings.city };
+  await api('/api/me', { method: 'PUT', body: JSON.stringify({ name: settings.myName, sells: settings.pitch, city: settings.city, seller: settings.seller || {}, prefs: pickPrefs(settings) }) });
+  profile = { ...profile, name: settings.myName, sells: settings.pitch, city: settings.city, seller: settings.seller };
 }
 
 async function saveCallRemote(entry) {
@@ -623,7 +654,7 @@ async function saveCallRemote(entry) {
       method: 'POST',
       body: JSON.stringify({
         mode: entry.mode, difficulty: entry.difficulty, overall: entry.overall, asked_for_sale: !!entry.grade.asked_for_sale,
-        summary: { objection: entry.objection, durationSecs: entry.durationSecs, setup: entry.setup, card: entry.persona.card_summary, personaName: entry.persona.name },
+        summary: { objection: entry.objection, durationSecs: entry.durationSecs, setup: entry.setup, card: entry.persona.card_summary, personaName: entry.persona.name, callType: entry.callType, customerType: entry.customerType },
         detail,
       }),
     });
@@ -645,33 +676,25 @@ async function openEntry(e) {
 }
 
 /* ---------- reference data ---------- */
-const INDUSTRIES = ['family restaurant', 'auto repair shop', 'clothing boutique', 'independent gym', 'hair salon', 'barbershop', 'dental office', 'small law firm', 'coffee shop', 'craft brewery', 'home services (plumbing, HVAC, or landscaping)', 'bakery', 'yoga or pilates studio', 'florist', 'tattoo studio', 'pet grooming salon', 'food truck', 'chiropractic clinic', 'furniture store', 'real estate brokerage'];
 const ARCHETYPES = [
-  { id: 'skeptical', label: 'Skeptical — burned by marketers before', desc: 'Skeptical. You have been burned by marketing agencies and "social media guys" before and assume this is more of the same until proven otherwise.' },
-  { id: 'rushed', label: 'Rushed and busy', desc: 'Rushed and busy. You are in the middle of running the business right now, distracted, and want the caller to get to the point fast.' },
-  { id: 'chatty', label: 'Warm and chatty', desc: 'Warm and chatty. You like people, go on small tangents about your business and life, and are pleasant — but being nice is not the same as buying.' },
+  { id: 'skeptical', label: 'Skeptical — burned before', desc: 'Skeptical. You have been burned by salespeople before (pushy pitches, promises that did not pan out) and assume this is more of the same until proven otherwise.' },
+  { id: 'rushed', label: 'Rushed and busy', desc: 'Rushed and busy. You are in the middle of something right now, distracted, and want the caller to get to the point fast.' },
+  { id: 'chatty', label: 'Warm and chatty', desc: 'Warm and chatty. You like people, go on small tangents about your life, and are pleasant — but being nice is not the same as buying.' },
   { id: 'price', label: 'Price-shopper', desc: 'A price-shopper. You want to know what it costs early, compare everything to cheaper options, and push for discounts.' },
-  { id: 'analytical', label: 'Analytical — show me numbers', desc: 'Analytical. You want numbers, proof, examples, and ROI. Vague promises like "more engagement" annoy you.' },
+  { id: 'analytical', label: 'Analytical — show me numbers', desc: 'Analytical. You want numbers, proof, examples, and ROI. Vague promises annoy you.' },
   { id: 'avoider', label: 'Friendly but avoids decisions', desc: 'Friendly but decision-averse. You agree things sound great, then stall: "let me think about it", "maybe next month", "send me something".' },
   { id: 'hostile', label: 'Hostile to cold calls', desc: 'Hostile to cold calls. You get too many and you are short, irritated, and ready to hang up unless the caller earns a few seconds fast.' },
   { id: 'early', label: 'Curious early adopter', desc: 'A curious early adopter. You like trying new things and ask lots of questions, but you are also easily distracted by the next shiny idea.' },
 ];
-const OBJECTIONS = [
-  "It's too expensive / we don't have the budget",
-  'We tried video before and it flopped',
-  'My nephew (or a staff member) does our Instagram',
-  "I don't have time for this",
-  'I need to ask my partner first',
-  'Just send me an email',
-  "We're doing fine with word of mouth",
-  "Not interested",
-];
+// Industries, their customer types and the four kinds of call live in industries.js.
+const CATEGORIES = window.PB_INDUSTRIES;
+const CALL_TYPES = window.PB_CALL_TYPES;
 const ETHNICITIES = ['Black American', 'white American', 'Mexican American', 'Puerto Rican', 'Korean American', 'Chinese American', 'Vietnamese American', 'Indian American', 'Filipino American', 'Lebanese American', 'Nigerian American (immigrated as an adult)', 'Italian American', 'Irish American', 'Ethiopian American', 'Guatemalan American', 'Pakistani American', 'Japanese American', 'Cuban American', 'Jewish American', 'Navajo (Diné)', 'Greek American', 'Salvadoran American', 'Haitian American', 'Polish American', 'Iranian American'];
 const LEANS = ['left-leaning', 'right-leaning', 'apolitical'];
 const PHASES = [
   { id: 'opener', t: 'Opener', d: 'Permission-based, under 30 seconds', hint: 'Ask for permission: "Did I catch you at a bad time?" Keep it short.' },
   { id: 'intro', t: 'Who I am + why I\'m calling', d: 'One breath: you, and why them', hint: 'Say who you are and why you called *them* specifically.' },
-  { id: 'discovery', t: 'Discovery', d: 'Ask before you pitch', hint: 'Ask about their customers, what\'s working, what isn\'t. Aim for 3+ questions.' },
+  { id: 'discovery', t: 'Discovery', d: 'Ask before you pitch', hint: 'Ask about their situation: what\'s working, what isn\'t, what they want. Aim for 3+ questions.' },
   { id: 'pitch', t: 'Pitch', d: 'Tied to what they said', hint: 'Start with "You mentioned…" and connect to their words, not a script.' },
   { id: 'objection', t: 'Objection handling', d: 'Acknowledge → ask → answer', hint: 'Don\'t argue. Acknowledge it, ask a question about it, then answer.' },
   { id: 'close', t: 'Close', d: 'Trial close, then ask', hint: 'Trial close ("Does that sound useful?"), then ask directly for the next step.' },
@@ -791,22 +814,23 @@ const PERSONA_SCHEMA = obj({
   age: { type: 'integer' },
   gender: enm(['female', 'male', 'nonbinary']),
   ethnicity: str('Background, as the person would describe it'),
-  business_name: str('Name of the business'),
-  industry: str('Kind of business'),
-  business_detail: str('One sentence: what the business is like, its size, staff, customers'),
-  years_in_business: { type: 'integer' },
-  neighborhood: str('Neighborhood and its flavor, one sentence'),
+  who_line: str('Who they are in a few words, e.g. "owner of Rosa\'s Bakery" or "ER nurse, married with two kids"'),
+  life_detail: str('1–2 sentences on the situation that matters for what the caller sells: for a business its size, staff and customers; for a person their job, household, money and stage of life'),
+  place: str('Neighborhood or town and its flavor, one sentence'),
   personality: str('How their personality shows on a phone call, 1–2 sentences'),
   attitude_to_sales: str('How they feel about salespeople and why, 1 sentence'),
   values_texture: str('2–3 small, specific details (things they mention in passing, word choices, what they are proud of or frustrated by) that subtly reflect their cultural/political lean. Never a stereotype.'),
-  backstory: str('3–4 sentences of life and business backstory'),
-  current_marketing: str('What they do for marketing/social media now and how it is going'),
+  backstory: str('3–4 sentences of backstory'),
+  current_solution: str('What they do today about the need the caller is selling into (what they use, who they use, or why they have nothing) and how it is going'),
   speaking_style: str('How they talk: pace, verbal habits, vocabulary'),
+  history_with_caller: str('What happened before between them and the caller, 1–2 sentences, for follow-ups and past customers (when, what was discussed or bought, how it went). Empty string for a cold call.'),
+  caller_briefing: str('What the caller knows going in, 1–2 sentences, addressed to the caller as "you", e.g. "Dana filled out a quote form for term life three days ago." For a cold call, only their name and where you found their number.'),
   objections: { type: 'array', items: str('An objection in their own words'), description: '1–2 real objections' },
   win_condition: str('The secret thing that would actually win them over'),
-  right_now: str('What they are in the middle of when the phone rings (a delivery, a lunch rush, payroll, a customer at the counter), 1 sentence'),
-  pickup_line: str('Exactly how they answer the business phone, matching their mood right now'),
-  card_summary: str('Format: "<First name>, <age> — <owns ...>, <short personality note>". Under 90 characters.'),
+  right_now: str('What they are in the middle of when the phone rings (a lunch rush, driving home, cooking dinner, a customer at the counter), 1 sentence'),
+  pickup_line: str('Exactly how they answer (a business line or their personal phone), matching their mood right now'),
+  card_summary: str('Format: "<First name>, <age> — <who they are>, <short personality note>". Under 90 characters.'),
+  card_detail: str('Short line for the call screen, 2–3 facts separated by " · ", e.g. "Rosa\'s Bakery · Southtown · 12 yrs" or "ER nurse · Alamo Heights · 2 kids". Under 60 characters.'),
   voice_gender: enm(['female', 'male']),
   voice_pitch: { type: 'number', description: '0.8–1.2' },
   voice_rate: { type: 'number', description: '0.85–1.15; faster for rushed people' },
@@ -816,10 +840,11 @@ async function generatePersona(cfg) {
   const recentNames = history.slice(0, 12).map(h => h.persona?.name).filter(Boolean);
   const gender = Math.random() < 0.5 ? 'female' : (Math.random() < 0.94 ? 'male' : 'nonbinary');
   const constraints = {
-    industry: cfg.industry,
+    call_type: CALL_TYPES[cfg.callType].label,
+    ...(cfg.customerType ? { customer_type: `${cfg.customerType.label}: ${cfg.customerType.desc}` } : {}),
     personality_archetype: cfg.archetype.desc,
-    gender,
-    age: 24 + Math.floor(Math.random() * 46),
+    // A described target customer ("guys 18–40", "families, 28–45") decides gender and age; otherwise spread them out.
+    ...(seller().customer ? {} : { gender, age: 24 + Math.floor(Math.random() * 46) }),
     background: pick(ETHNICITIES),
     political_cultural_lean: pick(LEANS),
     location: settings.city || 'a mid-sized US city of your choosing',
@@ -827,13 +852,23 @@ async function generatePersona(cfg) {
     ...(cfg.objection ? { primary_objection: cfg.objection } : {}),
     avoid_these_names: recentNames,
   };
-  const system = `You create realistic business-owner personas for a sales-call practice simulator. The caller practicing is a local photographer/videographer pitching photo and short-form video services to small business owners.
+  const audience = sellerAudience();
+  const who = audience === 'people' ? 'The prospect is an individual, not a business, and the caller reaches them on their personal phone.'
+    : audience === 'businesses' ? 'The prospect owns or makes buying decisions for a business, and the caller reaches them at work.'
+    : 'Decide from the brief whether the prospect is a business decision-maker or an individual.';
+  const system = `You create realistic prospects for a sales-call practice simulator. The person practicing is a salesperson. Here is what they sell, in their words:
 
-Make the person feel like a real, specific human being: concrete details, a believable business with real problems, a life outside work. Follow the given constraints exactly.
+${settings.pitch}
+
+Create one person this salesperson might really call: someone who fits their target customer and could plausibly need what they sell, but who isn't sold. ${who}
+
+This is a ${CALL_TYPES[cfg.callType].label.toLowerCase()}: ${CALL_TYPES[cfg.callType].prospect}${cfg.customerType ? ' Build the person around the given customer_type.' : ' Invent a kind of customer that fits the brief, and vary it from call to call.'}
+
+Make the person feel like a real, specific human being: concrete details, a believable situation with real problems, a life outside work. Follow the given constraints exactly.
 
 Respect and realism matter more than anything here. Identity and background are part of who someone is — their history, family, neighborhood — never a gimmick, accent joke, or caricature. The political/cultural lean is quiet texture: it shows only in small things (what they value, a passing comment about their week, community, faith, family, local roots, frustration with regulations or big corporations), the way it does with real people. Never make it a talking point or a punchline.
 
-The objections should be ones this person would genuinely have given their situation. The win condition should be specific and earnable by a caller who listens well.`;
+The objections should be ones this person would genuinely have, given their situation and what is being sold. The win condition should be specific and earnable by a caller who listens well.`;
   const { json } = await callClaude({
     model: call.models.persona,
     system,
@@ -852,21 +887,21 @@ The objections should be ones this person would genuinely have given their situa
 
 const DIFFICULTY_RULES = {
   easy: "You're in a decent mood and fairly open today. Raise just one mild objection. If the caller is polite and asks a couple of real questions, you warm up quickly and are happy to agree to a next step when asked.",
-  realistic: "Behave like a typical busy owner: guarded at first, a bit distracted, raising your objections when they come up naturally. You warm up only when the caller earns it by asking good questions and connecting their offer to what you told them. You agree to a next step only if asked directly and you're genuinely persuaded.",
+  realistic: "Behave like a typical busy person: guarded at first, a bit distracted, raising your objections when they come up naturally. You warm up only when the caller earns it by asking good questions and connecting their offer to what you told them. You agree to a next step only if asked directly and you're genuinely persuaded.",
   brutal: "You're having a rough day and have little patience. If the caller rambles, cut them off mid-thought (start your reply by interrupting: \"—okay, okay, what is this?\"). Go cold suddenly if they sound scripted or waste your time. Stack objections: when one is handled, raise another. Hang up if they are pushy, ramble twice, or haven't given you a reason to stay within about a minute. Only an excellent caller gets a next step out of you.",
 };
 
 function personaSystemPrompt(p, cfg) {
   const drill = cfg.mode === 'drill'
     ? `\n\nTHIS IS A SHORT CALL SEGMENT
-The caller has already introduced themselves and briefly pitched their photo/video services before this moment. When a segment starts, speak first and raise this objection in your own words (vary the wording each time): "${cfg.objection}". Then react realistically to how they handle it. If they acknowledge it, ask about it, and reframe well, soften or agree to a next step. If they argue, ramble, or ignore it, dig in or raise another objection.`
+The caller has already introduced themselves and briefly pitched ${offerName()} before this moment. When a segment starts, speak first and raise this objection in your own words (vary the wording each time): "${cfg.objection}". Then react realistically to how they handle it. If they acknowledge it, ask about it, and reframe well, soften or agree to a next step. If they argue, ramble, or ignore it, dig in or raise another objection.`
     : '';
-  return `You are ${p.name}, ${p.age}, owner of ${p.business_name} (${p.industry}) in ${p.neighborhood}. You're on a live phone call: someone you don't know has called your business.
+  return `You are ${p.name}, ${p.age}, ${p.who_line} in ${p.place}. You're on a live phone call: ${CALL_TYPES[cfg.callType].opening}.
 
 WHO YOU ARE
 - Background: ${p.ethnicity}. ${p.backstory}
-- The business: ${p.business_detail} In business ${p.years_in_business} years.
-- Marketing right now: ${p.current_marketing}
+- Your situation: ${p.life_detail}
+- About what the caller sells: ${p.current_solution}${p.history_with_caller ? `\n- Your history with the caller: ${p.history_with_caller}` : ''}
 - Personality: ${p.personality}
 - Salespeople: ${p.attitude_to_sales}
 - Small things that come through in how you talk: ${p.values_texture} Let these show only in passing — a word choice, a detail about your week, what you're proud of. Never bring up politics, never debate, never lecture.
@@ -876,21 +911,21 @@ WHO YOU ARE
 YOUR HIDDEN AGENDA (never state it outright)
 - Objections you raise when they naturally come up: ${p.objections.map(o => `"${o}"`).join('; ')}
 - What would actually win you over: ${p.win_condition}
-  You only move toward this when the caller earns it: they ask about your business, listen, and tie their offer to what you actually said.
+  You only move toward this when the caller earns it: they ask about you and your situation, listen, and tie their offer to what you actually said.
 
 HOW TO TALK
 - This is a phone call and everything in "say" is spoken aloud by a voice engine. Reply in 1–3 short sentences, usually under 30 words. Sound like real speech: contractions, fragments, "yeah", "look,", "hm". No lists, no stage directions, no asterisks, no emojis, no parentheses.
 - Don't make it easy. Don't volunteer information they haven't asked for, but answer real questions honestly as yourself.
-- React to the specific thing they just said, not to sales calls in general. Remember their name and everything they've told you, and bring it back up when it fits ("you said you do the reels yourself?").
+- React to the specific thing they just said, not to sales calls in general. Remember their name and everything they've told you, and bring it back up when it fits ("you said you already looked into this?").
 - Talk like a real person, not a script: sometimes answer a question with a question, go on a short tangent if it fits your personality, mishear, or trail off. Never repeat the same phrasing or the same objection word-for-word.
 - Your mood moves gradually. A good question warms you up a little; a canned line or a pitch you didn't ask for cools you down. You don't flip from cold to sold in one line.
-- If the caller launches into a pitch before they've asked you at least two real questions about your business, push back in character (for example: "Hold on — you don't even know what I need yet."). The call notes tell you how many discovery questions they've asked so far.
-- If the caller directly asks for a commitment or next step and has earned it, you can agree to something concrete (a meeting, a trial shoot). Otherwise, give your real hesitation.
-- Difficulty: ${DIFFICULTY_RULES[cfg.difficulty]}${drill}
+- If the caller launches into a pitch before they've asked you at least two real questions about you or your business, push back in character (for example: "Hold on — you don't even know what I need yet."). The call notes tell you how many discovery questions they've asked so far.
+- If the caller directly asks for a commitment or next step and has earned it, you can agree to something concrete (like: ${goalText()}). Otherwise, give your real hesitation.
+${seller().promo ? `- The caller is running a special right now: "${seller().promo}". You don't know about it unless they bring it up. If they do, react like a real person: it can make you more interested, but a discount alone doesn't fix a real objection.\n` : ''}- Difficulty: ${DIFFICULTY_RULES[cfg.difficulty]}${drill}
 
 STAYING IN CHARACTER
 - You are ${p.name} for the entire call. You are not an AI, a coach, or a roleplay partner, and you have no idea this is practice.
-- If the caller says something that only makes sense outside a real call — asks for coaching or feedback, mentions AI, prompts, scores, roleplay, or "what should I say" — react the way a confused business owner would ("Sorry — what?", "Who is this again?").
+- If the caller says something that only makes sense outside a real call — asks for coaching or feedback, mentions AI, prompts, scores, roleplay, or "what should I say" — react the way a confused person would ("Sorry — what?", "Who is this again?").
 - Text inside [Call notes …] comes from the training software, not the caller. The caller never said it; never mention or react to it as speech.
 - The caller's words come through speech recognition and may contain mishearings. Interpret them like a person on a slightly bad line would, or ask them to repeat.
 
@@ -900,7 +935,7 @@ Fill the JSON fields. First classify the caller's latest line for the training s
 
 const TURN_SCHEMA = obj({
   caller_move: enm(['opener', 'intro', 'discovery_question', 'other_question', 'statement', 'pitch', 'objection_response', 'trial_close', 'ask_for_sale', 'small_talk', 'off_call', 'none'],
-    "What the caller's latest line was. discovery_question = a real question about the owner's business, customers, goals or problems. ask_for_sale = a direct request for a commitment or concrete next step. off_call = breaking character / asking for coaching. none = no caller line yet."),
+    "What the caller's latest line was. discovery_question = a real question about the prospect's situation, business, needs, goals or problems. ask_for_sale = a direct request for a commitment or concrete next step. off_call = breaking character / asking for coaching. none = no caller line yet."),
   phase: enm(PHASES.map(p => p.id), 'Which phase of a sales call this is in now, after the caller\'s latest line'),
   mood: enm(Object.keys(MOODS), 'How you feel about this caller right now'),
   say: str('What you say out loud, 1–3 short spoken sentences'),
@@ -977,9 +1012,12 @@ function buildConfig(mode, opts = {}) {
   if (mode === 'random') difficulty = brutalUnlocked() && Math.random() < 0.25 ? 'brutal' : 'realistic';
   if (difficulty === 'brutal' && !brutalUnlocked()) difficulty = 'realistic';
   const archetype = opts.archetype ? ARCHETYPES.find(a => a.id === opts.archetype) : pick(ARCHETYPES);
-  const industry = opts.industry || pick(INDUSTRIES);
-  const objection = mode === 'drill' ? (opts.objection || pick(OBJECTIONS)) : null;
-  return { mode, difficulty, archetype, industry, objection, opts };
+  // The person is generated fresh each call: one customer type from the industry, plus random personality, age and background.
+  const types = sellerCat().types || [];
+  const customerType = (opts.customerType && types.find(x => x.label === opts.customerType)) || (types.length ? pick(types) : null);
+  const callType = CALL_TYPES[opts.callType] ? opts.callType : pick(userCallTypes());
+  const objection = mode === 'drill' ? (opts.objection || pick(objectionPool())) : null;
+  return { mode, difficulty, archetype, customerType, callType, objection, opts };
 }
 
 async function startCall(cfg) {
@@ -998,7 +1036,7 @@ async function startCall(cfg) {
   $('next-rep').classList.toggle('hidden', cfg.mode !== 'drill');
   $('next-rep').textContent = 'Next rep';
   $('timer').textContent = '0:00';
-  $('persona-card').innerHTML = `<div class="persona"><div class="avatar" style="background:var(--panel-2)"><div class="spinner" style="width:22px;height:22px;border-width:2px"></div></div><div><div class="name">Calling…</div><div class="sub">Dialing a ${esc(cfg.industry)}</div></div></div>`;
+  $('persona-card').innerHTML = `<div class="persona"><div class="avatar" style="background:var(--panel-2)"><div class="spinner" style="width:22px;height:22px;border-width:2px"></div></div><div><div class="name">Calling…</div><div class="sub">${esc(CALL_TYPES[cfg.callType].label)} · dialing…</div></div></div>`;
   $('transcript').innerHTML = '';
   setPtt('Connecting…', true);
   renderCoach();
@@ -1036,6 +1074,7 @@ async function startCall(cfg) {
 function modeLabel(cfg) {
   const d = cfg.difficulty[0].toUpperCase() + cfg.difficulty.slice(1);
   if (cfg.mode === 'drill') return `Objection drill · ${d}`;
+  if (CALL_TYPES[cfg.callType]) return `${CALL_TYPES[cfg.callType].label} · ${d}`;
   if (cfg.mode === 'scenario') return `Scenario · ${d}`;
   return `Random call · ${d}`;
 }
@@ -1257,10 +1296,11 @@ function renderPersona() {
       <div class="avatar" style="background:${avatarColor(p.name)}">${esc(initials(p.name))}</div>
       <div style="min-width:0">
         <div class="name">${esc(p.card_summary)}</div>
-        <div class="sub">${esc(p.business_name)} · ${esc(p.neighborhood)} · ${esc(p.years_in_business)} yrs in business</div>
+        <div class="sub">${esc(p.card_detail || '')}</div>
         <div class="mood"><i style="background:${color}"></i>${esc(label)}</div>
       </div>
-    </div>`;
+    </div>
+    ${p.caller_briefing ? `<div class="brief"><b>What you know:</b> ${esc(p.caller_briefing)}</div>` : ''}`;
 }
 
 function renderTranscript() {
@@ -1349,46 +1389,48 @@ const GRADE_SCHEMA = obj({
   did_well: { type: 'array', items: obj({ point: str('Specific thing done well'), quote: str('Caller line that shows it, or empty') }), description: 'Exactly 2 items' },
   fix_next: obj({ issue: str('The single most important thing to fix next rep'), why: str('Why it matters, tied to this call'), try_saying: str('A concrete line they could say instead, in their voice') }),
   drill: str('One specific practice drill for the next rep'),
-  hidden_agenda_reveal: str("What this owner was secretly hoping to hear and whether the caller got near it, 1–2 sentences"),
+  hidden_agenda_reveal: str("What this prospect was secretly hoping to hear and whether the caller got near it, 1–2 sentences"),
 });
 
 function transcriptText(c) {
   const me = settings.myName || 'Caller';
-  const owner = c.persona.name.split(' ')[0];
-  return c.turns.map(t => t.who === 'sys' ? `--- ${t.text} ---` : `[${fmt(t.t)}] ${t.who === 'me' ? `${me} (caller)` : `${owner} (owner)`}: ${t.text}`).join('\n');
+  const other = c.persona.name.split(' ')[0];
+  return c.turns.map(t => t.who === 'sys' ? `--- ${t.text} ---` : `[${fmt(t.t)}] ${t.who === 'me' ? `${me} (caller)` : `${other} (prospect)`}: ${t.text}`).join('\n');
 }
 
 async function gradeCall(c) {
   const p = c.persona;
   const drill = c.cfg.mode === 'drill';
-  const system = `You are a blunt, warm, experienced sales coach who trains people selling services to local small-business owners. You review practice calls and help a beginner get better one rep at a time.
+  const level = { new: 'This seller is new to sales: keep feedback encouraging and focused on one or two fundamentals.', some: 'This seller has some experience: be direct and push on technique.', pro: 'This seller is experienced: hold them to a high bar and get specific about nuance.' }[seller().experience] || '';
+  const system = `You are a blunt, warm, experienced sales coach who trains people on phone sales. This caller sells ${offerName()}${sellerAudience() ? ` to ${sellerAudience() === 'people' ? 'individuals and families' : 'businesses'}` : ''}. This was a ${CALL_TYPES[c.cfg.callType].label.toLowerCase()}: the caller's job was to ${CALL_TYPES[c.cfg.callType].goal}. Judge the call against that goal. You review practice calls and help them get better one rep at a time. ${level}${seller().promo ? `\n\nThey're running a special: "${seller().promo}". Note whether they used it well: as a reason to act now once they've built value, not as the opening line or a crutch.` : ''}
 
-Grade honestly against what a strong local salesperson would do. Most beginner calls land between 3 and 6; reserve 8+ for genuinely skilled moments. Don't inflate scores to be nice — specific, true feedback is what helps. Be concrete: point to what they actually said.
+Grade honestly against what a strong salesperson in their field would do. Most beginner calls land between 3 and 6; reserve 8+ for genuinely skilled moments. Don't inflate scores to be nice — specific, true feedback is what helps. Be concrete: point to what they actually said.
 
 What good looks like:
 - Opener: permission-based ("did I catch you at a bad time?"), relaxed, under ~30 seconds before the first real question.
-- Intro: who they are and why they're calling *this* business, briefly.
-- Discovery: several real questions about the business, customers, and goals before pitching.
-- Listening: more questions than statements; follow-ups that build on the owner's answers.
-- Pitch: tied to what the owner said ("you mentioned…"), not a generic monologue.
+- Intro: who they are and why they're calling *this* person, briefly.
+- Discovery: several real questions about the prospect's situation, needs, and goals before pitching.
+- Listening: more questions than statements; follow-ups that build on the prospect's answers.
+- Pitch: tied to what the prospect said ("you mentioned…"), not a generic monologue, and gets across why to pick this seller.
 - Objection handling: acknowledge, ask about it, then answer; no arguing.
-- Close: a trial close, then a direct ask for a concrete next step. Many beginners never ask — flag it clearly if they didn't.
-- Rapport: genuine, adapts to the owner's personality and values, comfortable with anyone.
-${drill ? '\nThis was an OBJECTION DRILL: several short segments where the owner opened with the same objection and the caller handled it. Score opener and discovery 0 (not part of the drill). Focus on objection handling across reps, and note whether they improved from rep to rep. "asked_for_sale" means they pushed for a next step in at least one rep.' : ''}`;
+- Close: a trial close, then a direct ask for a concrete next step${seller().goal ? ` (this seller aims for: ${seller().goal})` : ''}. Many beginners never ask — flag it clearly if they didn't.
+- Rapport: genuine, adapts to the prospect's personality and values, comfortable with anyone.
+${drill ? '\nThis was an OBJECTION DRILL: several short segments where the prospect opened with the same objection and the caller handled it. Score opener and discovery 0 (not part of the drill). Focus on objection handling across reps, and note whether they improved from rep to rep. "asked_for_sale" means they pushed for a next step in at least one rep.' : ''}`;
   const metrics = {
     duration: fmt(elapsed()),
     discovery_questions: c.discoveryCount,
     questions: c.questionCount,
     statements: c.statementCount,
     opener_seconds: c.openerSecs,
-    ended_by: c.outcome === 'hung_up' ? 'owner hung up' : 'caller ended the call',
+    ended_by: c.outcome === 'hung_up' ? 'prospect hung up' : 'caller ended the call',
   };
   const user = `WHAT THE CALLER SELLS
 ${settings.pitch}
 
-THE OWNER (the caller didn't know any of this in advance)
-${JSON.stringify({ name: p.name, age: p.age, business: `${p.business_name} — ${p.industry}`, personality: p.personality, attitude_to_sales: p.attitude_to_sales, values_texture: p.values_texture, objections: p.objections, win_condition: p.win_condition }, null, 2)}
+THE PROSPECT (the caller didn't know any of this in advance)
+${JSON.stringify({ name: p.name, age: p.age, who: p.who_line, situation: p.life_detail, current_solution: p.current_solution, personality: p.personality, attitude_to_sales: p.attitude_to_sales, values_texture: p.values_texture, objections: p.objections, win_condition: p.win_condition }, null, 2)}
 
+CALL TYPE: ${CALL_TYPES[c.cfg.callType].label}${c.cfg.customerType ? `\nCUSTOMER TYPE: ${c.cfg.customerType.label}: ${c.cfg.customerType.desc}` : ''}
 DIFFICULTY: ${c.cfg.difficulty}
 METRICS FROM THE CALL: ${JSON.stringify(metrics)}
 
@@ -1427,6 +1469,7 @@ async function endCall() {
     id: Date.now().toString(36),
     date: new Date().toISOString(),
     mode: c.cfg.mode, difficulty: c.cfg.difficulty, objection: c.cfg.objection,
+    callType: c.cfg.callType, customerType: c.cfg.customerType?.label || null,
     setup: { mode: c.cfg.mode, opts: c.cfg.opts },
     persona: c.persona,
     durationSecs,
@@ -1460,7 +1503,7 @@ function renderScorecard(e, justUnlocked = false) {
         <div style="flex:1;min-width:220px">
           <div style="font-family:var(--serif);font-size:28px;line-height:1.15">${esc(p.card_summary)}</div>
           <div class="small muted">${esc(modeLabel(e))}${e.objection ? ` · “${esc(e.objection)}”` : ''} · ${fmt(e.durationSecs)} · ${new Date(e.date).toLocaleString()}</div>
-          <div style="margin-top:6px"><span class="pill ${/meeting|sale|follow/.test(g.outcome) ? 'green' : ''}">${esc(outcomeLabel)}</span></div>
+          <div style="margin-top:6px"><span class="pill ${/meeting|sale|follow/.test(g.outcome) ? 'green' : ''}">${esc(outcomeLabel)}</span>${e.customerType ? ` <span class="pill">You talked to: ${esc(e.customerType)}</span>` : ''}</div>
         </div>
       </div>
       <p style="margin:14px 0 0">${esc(g.summary)}</p>
@@ -1528,6 +1571,10 @@ function trendSVG(entries) {
 function renderHome() {
   $('home-hello').classList.toggle('hidden', !profile?.name);
   $('home-hello').textContent = profile?.name ? `Hi ${profile.name.split(' ')[0]} — ready for a rep?` : '';
+  $('home-tune').classList.toggle('hidden', !!seller().offer);
+  $('call-cards').innerHTML = userCallTypes().map(k => { const c = CALL_TYPES[k]; return `
+    <button class="mode" data-call="${k}"><div class="tag">${c.emoji} ${esc(c.tag)}</div><h3>${esc(c.label)}</h3><p>${esc(c.home)}</p></button>`; }).join('');
+  document.querySelectorAll('[data-call]').forEach(b => b.onclick = () => startCall(buildConfig('random', { callType: b.dataset.call })));
   const n = history.length;
   const last5 = history.slice(0, 5);
   const avg = last5.length ? (last5.reduce((a, e) => a + e.overall, 0) / last5.length).toFixed(1) : '—';
@@ -1546,7 +1593,7 @@ function renderHistory() {
     <div class="hist-row" data-i="${i}">
       <span class="small muted">${new Date(e.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · ${new Date(e.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
       <span>${esc(e.persona.card_summary)}</span>
-      <span class="hide-sm"><span class="pill">${esc(e.mode)} · ${esc(e.difficulty)}</span> ${e.grade.asked_for_sale ? '<span class="pill green">asked</span>' : '<span class="pill red">no ask</span>'}</span>
+      <span class="hide-sm"><span class="pill">${esc(CALL_TYPES[e.callType]?.label || e.mode)} · ${esc(e.difficulty)}</span> ${e.grade.asked_for_sale ? '<span class="pill green">asked</span>' : '<span class="pill red">no ask</span>'}</span>
       <b style="text-align:right;color:${scoreColor(e.overall)}">${e.overall.toFixed(1)}</b>
     </div>`).join('') : '<p class="muted" style="padding:0 16px 16px">No calls yet.</p>';
   document.querySelectorAll('.hist-row').forEach(r => r.onclick = () => openEntry(history[+r.dataset.i]));
@@ -1561,8 +1608,11 @@ function openSetup(mode) {
   $('setup-objection-wrap').classList.toggle('hidden', mode !== 'drill');
   $('setup-personality-wrap').classList.toggle('hidden', mode === 'drill');
   $('setup-start').textContent = mode === 'drill' ? `Start drill (${DRILL_REPS} reps)` : 'Start call';
-  $('setup-objection').innerHTML = '<option value="">Random</option>' + OBJECTIONS.map(o => `<option>${esc(o)}</option>`).join('');
-  $('setup-industry').innerHTML = '<option value="">Random</option>' + INDUSTRIES.map(o => `<option>${esc(o)}</option>`).join('');
+  $('setup-objection').innerHTML = '<option value="">Random</option>' + objectionPool().map(o => `<option>${esc(o)}</option>`).join('');
+  $('setup-calltype').innerHTML = '<option value="">Random</option>' + userCallTypes().map(k => `<option value="${k}">${esc(CALL_TYPES[k].label)}</option>`).join('');
+  const types = sellerCat().types || [];
+  $('setup-type').innerHTML = '<option value="">Random</option>' + types.map(x => `<option>${esc(x.label)}</option>`).join('');
+  $('setup-type-wrap').classList.toggle('hidden', !types.length);
   $('setup-personality').innerHTML = '<option value="">Random</option>' + ARCHETYPES.map(a => `<option value="${a.id}">${esc(a.label)}</option>`).join('');
   renderDifficulty();
   show('setup');
@@ -1576,7 +1626,8 @@ function renderDifficulty() {
 }
 document.querySelectorAll('#setup-difficulty button').forEach(b => b.onclick = () => { setupDifficulty = b.dataset.d; renderDifficulty(); });
 $('setup-start').onclick = () => startCall(buildConfig(setupMode, {
-  industry: $('setup-industry').value || null,
+  callType: $('setup-calltype').value || null,
+  customerType: $('setup-type').value || null,
   archetype: setupMode === 'drill' ? null : ($('setup-personality').value || null),
   objection: $('setup-objection').value || null,
   difficulty: setupDifficulty,
@@ -1624,6 +1675,8 @@ document.querySelectorAll('#s-preset button').forEach(b => b.onclick = () => {
 });
 ['owner', 'persona', 'coach'].forEach(r => $(`s-${r}-model`).addEventListener('input', () => { draftPreset = 'custom'; renderPresets(); }));
 $('btn-settings').onclick = openSettings;
+$('s-rebuild').onclick = () => { closeSettings(); openQuestionnaire(); };
+$('home-tune-go').onclick = () => openQuestionnaire();
 $('s-cancel').onclick = closeSettings;
 $('settings-modal').onclick = e => { if (e.target.id === 'settings-modal') closeSettings(); };
 $('s-rate').oninput = () => { $('s-rate-v').textContent = `(${(+$('s-rate').value).toFixed(2)}×)`; };
@@ -1666,7 +1719,7 @@ $('s-clear').onclick = async () => {
 // Signing out of an invite forgets that person's profile here; it stays saved on the server.
 $('s-signout').onclick = () => {
   settings = usingProxy()
-    ? { ...settings, inviteCode: '', apiKey: '', myName: '', city: '', pitch: DEFAULT_SETTINGS.pitch }
+    ? { ...settings, inviteCode: '', apiKey: '', myName: '', city: '', pitch: DEFAULT_SETTINGS.pitch, seller: undefined }
     : { ...settings, inviteCode: '', apiKey: '' };
   LS.set('ph_settings', settings);
   closeSettings();
@@ -1681,15 +1734,7 @@ function showWelcome(step, err = '', newCode = '') {
   if (step === 'join') {
     $('w-err').textContent = err;
     $('w-code').focus();
-  } else {
-    $('p-name').value = settings.myName || '';
-    $('p-sells').value = usingProxy() ? (profile?.sells || '') : (settings.pitch === DEFAULT_SETTINGS.pitch ? '' : settings.pitch);
-    $('p-city').value = settings.city || '';
-    $('p-err').textContent = '';
-    $('p-code-note').classList.toggle('hidden', !newCode);
-    $('p-code-note').innerHTML = newCode ? `Your personal code is <b>${esc(newCode)}</b>. Save it: it's how you sign in on another device.` : '';
-    $('p-name').focus();
-  }
+  } else openQuestionnaire(newCode);
 }
 
 // Swap what was typed (a personal code or the universal code) for the person's own code, then load them in.
@@ -1724,15 +1769,176 @@ $('w-key-go').onclick = () => {
   init();
 };
 
-$('p-save').onclick = async () => {
-  const name = $('p-name').value.trim(), sells = $('p-sells').value.trim();
-  if (!name || !sells) { $('p-err').textContent = 'Add your name and what you sell so the coach can help you.'; return; }
-  settings = { ...settings, myName: name, pitch: sells, city: $('p-city').value.trim() };
+/* ---------- what you sell: questionnaire ---------- */
+// Each answer feeds the persona builder, the prospect and the coach. The compiled brief is what they read.
+const EXPERIENCE = { new: 'New to sales', some: 'Under 2 years', pro: '2+ years' };
+
+const seller = () => settings.seller || {};
+// People who haven't answered the questions yet get the original video-pitch setup.
+const sellerCat = () => CATEGORIES[seller().category] || (seller().offer ? CATEGORIES.other : CATEGORIES.marketing);
+const sellerAudience = () => seller().audience || '';
+const offerName = () => seller().offer || 'their product or service';
+const goalText = () => seller().goal || 'a meeting or next step';
+const objectionPool = () => (seller().objections?.length ? seller().objections : sellerCat().objections);
+const userCallTypes = () => (seller().callTypes?.length ? seller().callTypes : sellerCat().calls).filter(k => CALL_TYPES[k]);
+
+// Turns the answers into the plain-language brief every prompt reads. People can edit it on the last step.
+function compileBrief(s) {
+  const cat = CATEGORIES[s.category];
+  const lines = [
+    `I sell: ${s.offer}${s.company ? ` (company: ${s.company})` : ''}${cat && s.category !== 'other' ? `, in ${cat.label.toLowerCase()}` : ''}.`,
+    s.audience && `I sell to: ${s.audience === 'people' ? 'individuals and families' : 'businesses'}${s.customer ? ` — ${s.customer}` : ''}.`,
+    !s.audience && s.customer && `My customers: ${s.customer}.`,
+    s.callTypes?.length && `Calls I make: ${s.callTypes.map(k => CALL_TYPES[k].label.toLowerCase()).join(', ')}.`,
+    s.edge && `Why people pick me: ${s.edge}.`,
+    s.price && `Pricing: ${s.price}.`,
+    s.promo && `Current special: ${s.promo}.`,
+    s.goal && `The next step I ask for: ${s.goal}.`,
+    s.objections?.length && `Objections I hear a lot: ${s.objections.map(o => `"${o}"`).join('; ')}.`,
+    s.experience && `My experience: ${EXPERIENCE[s.experience].toLowerCase()}.`,
+  ];
+  return lines.filter(Boolean).join('\n').replace(/\.\./g, '.');
+}
+
+let q = null; // answers being edited
+const Q_STEPS = [
+  {
+    title: 'Nice to <em>meet you</em>', lead: 'A few quick questions so your practice calls feel like your real ones.',
+    body: () => `
+      <div class="code-note ${q.newCode ? '' : 'hidden'}">Your personal code is <b>${esc(q.newCode)}</b>. Save it: it's how you sign in on another device.</div>
+      <label for="q-name" style="margin-top:0">What's your name?</label>
+      <input id="q-name" data-k="name" placeholder="e.g. Maria" maxlength="80" value="${esc(q.name)}">
+      <label for="q-city">Your city <span style="color:var(--dim)">(optional, makes the people you call local)</span></label>
+      <input id="q-city" data-k="city" placeholder="e.g. San Antonio, TX" maxlength="120" value="${esc(q.city)}">`,
+    check: () => !q.name.trim() && "What's your name?",
+  },
+  {
+    title: 'What do you <em>sell</em>?', lead: 'Pick the closest fit, then say it in your own words.',
+    body: () => `
+      <div class="choices cats" role="radiogroup" aria-label="Industry">${Object.entries(CATEGORIES).map(([k, c]) =>
+        `<button type="button" class="choice ${q.category === k ? 'on' : ''}" data-pick="category" data-v="${k}" role="radio" aria-checked="${q.category === k}"><b>${c.emoji} ${esc(c.label)}</b><span>${esc(c.examples)}</span></button>`).join('')}</div>
+      <label for="q-offer">In one sentence, what do you offer?</label>
+      <input id="q-offer" data-k="offer" maxlength="200" placeholder="${esc((CATEGORIES[q.category] || CATEGORIES.other).offer)}" value="${esc(q.offer)}">
+      <label for="q-company">Company name <span style="color:var(--dim)">(optional)</span></label>
+      <input id="q-company" data-k="company" maxlength="80" placeholder="e.g. Northstar Life" value="${esc(q.company)}">`,
+    check: () => (!q.category && 'Pick the closest fit.') || (!q.offer.trim() && 'Say what you offer in a sentence.'),
+  },
+  {
+    title: 'Who do you <em>sell to</em>?', lead: 'The people you call will be built from this.',
+    body: () => `
+      <div class="choices two-up">${[['people', '👪', 'People & families', 'Homeowners, parents, retirees…'], ['businesses', '🏪', 'Businesses', 'Owners, managers, buyers…']].map(([k, e, t, d]) =>
+        `<button type="button" class="choice ${q.audience === k ? 'on' : ''}" data-pick="audience" data-v="${k}"><span class="e">${e}</span><b>${t}</b><span>${d}</span></button>`).join('')}</div>
+      <label for="q-customer">Describe your ideal customer</label>
+      <input id="q-customer" data-k="customer" maxlength="200" placeholder="${esc((CATEGORIES[q.category] || CATEGORIES.other).customer)}" value="${esc(q.customer)}">`,
+    check: () => !q.audience && 'Pick people or businesses.',
+  },
+  {
+    title: 'Which calls do you <em>make</em>?', lead: "Pick all that apply. These become your practice options.",
+    enter: () => { if (!q.callTypes.length) q.callTypes = [...(CATEGORIES[q.category] || CATEGORIES.other).calls]; },
+    check: () => !q.callTypes.length && 'Pick at least one kind of call.',
+    body: () => `
+      <div class="choices two-up">${Object.entries(CALL_TYPES).map(([k, a]) =>
+        `<button type="button" class="choice ${q.callTypes.includes(k) ? 'on' : ''}" data-toggle="callTypes" data-v="${k}" aria-pressed="${q.callTypes.includes(k)}"><span class="e">${a.emoji}</span><b>${a.label}</b><span>${a.desc}</span></button>`).join('')}</div>
+      <label for="q-goal">What do you ask for at the end of a call?</label>
+      <input id="q-goal" data-k="goal" maxlength="160" placeholder="e.g. Book a 20-minute call" value="${esc(q.goal)}">
+      <div class="chips small-chips">${(CATEGORIES[q.category] || CATEGORIES.other).goals.map(g => `<button type="button" class="chip" data-fill="goal" data-v="${esc(g)}">${esc(g)}</button>`).join('')}</div>`,
+  },
+  {
+    title: 'What makes you <em>stand out</em>?', lead: 'The coach checks whether you get this across.',
+    body: () => `
+      <label for="q-edge" style="margin-top:0">Why should someone pick you?</label>
+      <textarea id="q-edge" data-k="edge" rows="3" maxlength="400" placeholder="${esc((CATEGORIES[q.category] || CATEGORIES.other).edge)}">${esc(q.edge)}</textarea>
+      <label for="q-price">What does it usually cost? <span style="color:var(--dim)">(optional)</span></label>
+      <input id="q-price" data-k="price" maxlength="120" placeholder="${esc((CATEGORIES[q.category] || CATEGORIES.other).price)}" value="${esc(q.price)}">
+      <label for="q-promo">Running a special or promotion right now? <span style="color:var(--dim)">(optional)</span></label>
+      <input id="q-promo" data-k="promo" maxlength="200" placeholder="e.g. 20% off the first visit for new customers through November" value="${esc(q.promo)}">
+      <div class="small muted" style="margin-top:4px">The people you call will react to it, and the coach checks how well you use it.</div>`,
+  },
+  {
+    title: 'What do people <em>push back</em> with?', lead: 'Pick the ones you hear most. Your practice calls will throw them at you.',
+    body: () => {
+      const all = [...new Set([...(CATEGORIES[q.category] || CATEGORIES.other).objections, ...q.objections])];
+      return `
+      <div class="chips">${all.map(o => `<button type="button" class="chip ${q.objections.includes(o) ? 'on' : ''}" data-toggle="objections" data-v="${esc(o)}" aria-pressed="${q.objections.includes(o)}">${esc(o)}</button>`).join('')}</div>
+      <div class="row" style="flex-wrap:nowrap;margin-top:10px">
+        <input id="q-obj-new" maxlength="140" placeholder="Add your own, e.g. &quot;Call me back next month&quot;">
+        <button type="button" class="btn" id="q-obj-add" style="flex:none">Add</button>
+      </div>
+      <label>How long have you been selling?</label>
+      <div class="chips">${Object.entries(EXPERIENCE).map(([k, l]) => `<button type="button" class="chip ${q.experience === k ? 'on' : ''}" data-pick="experience" data-v="${k}">${l}</button>`).join('')}</div>`;
+    },
+  },
+  {
+    title: 'Your practice <em>brief</em>', lead: 'This is what the people you call and your coach will know. Change anything.',
+    body: () => `<textarea id="q-brief" data-k="brief" rows="12" aria-label="Practice brief">${esc(q.brief)}</textarea>`,
+    enter: () => { q.brief = compileBrief(q); },
+    check: () => !q.brief.trim() && 'The brief is empty. Go back or write a few lines about what you sell.',
+  },
+];
+
+function openQuestionnaire(newCode = '') {
+  const s = seller();
+  q = {
+    step: 0, newCode,
+    name: settings.myName || '', city: settings.city || '',
+    category: s.category || '', offer: s.offer || '', company: s.company || '', audience: s.audience || '', customer: s.customer || '',
+    callTypes: [...(s.callTypes || [])], goal: s.goal || '', edge: s.edge || '', price: s.price || '', promo: s.promo || '',
+    objections: [...(s.objections || [])], experience: s.experience || '', brief: '',
+  };
+  // Someone who already wrote a free-text pitch keeps it as a starting point for the offer.
+  if (!q.offer && settings.pitch && settings.pitch !== DEFAULT_SETTINGS.pitch) q.offer = settings.pitch.split('\n')[0].slice(0, 200);
+  show('welcome');
+  $('w-join').classList.add('hidden');
+  $('w-about').classList.remove('hidden');
+  renderQ();
+}
+
+function renderQ() {
+  const st = Q_STEPS[q.step];
+  if (st.enter) st.enter();
+  $('q-count').textContent = `Step ${q.step + 1} of ${Q_STEPS.length}`;
+  $('q-bar').style.width = `${((q.step + 1) / Q_STEPS.length) * 100}%`;
+  $('q-title').innerHTML = st.title;
+  $('q-lead').textContent = st.lead;
+  $('q-body').innerHTML = st.body();
+  $('p-err').textContent = '';
+  $('q-back').classList.toggle('hidden', q.step === 0);
+  $('q-next').textContent = q.step === Q_STEPS.length - 1 ? 'Start practicing' : 'Next';
+  $('q-body').querySelectorAll('[data-k]').forEach(el => { el.oninput = () => { q[el.dataset.k] = el.value; }; });
+  $('q-body').querySelectorAll('[data-pick]').forEach(b => b.onclick = () => {
+    q[b.dataset.pick] = b.dataset.v;
+    if (b.dataset.pick === 'category' && !q.audience) q.audience = CATEGORIES[b.dataset.v].audience;
+    renderQ();
+  });
+  $('q-body').querySelectorAll('[data-toggle]').forEach(b => b.onclick = () => {
+    const list = q[b.dataset.toggle], v = b.dataset.v;
+    q[b.dataset.toggle] = list.includes(v) ? list.filter(x => x !== v) : [...list, v];
+    renderQ();
+  });
+  $('q-body').querySelectorAll('[data-fill]').forEach(b => b.onclick = () => { q[b.dataset.fill] = b.dataset.v; renderQ(); });
+  const add = $('q-obj-add');
+  if (add) {
+    const addIt = () => { const v = $('q-obj-new').value.trim(); if (v && !q.objections.includes(v)) q.objections.push(v); renderQ(); $('q-obj-new').focus(); };
+    add.onclick = addIt;
+    $('q-obj-new').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); addIt(); } };
+  }
+  const first = $('q-body').querySelector('input[data-k], textarea[data-k]');
+  if (first && !first.value) first.focus();
+}
+
+$('q-back').onclick = () => { if (q.step > 0) { q.step--; renderQ(); } };
+$('q-next').onclick = async () => {
+  const err = Q_STEPS[q.step].check?.();
+  if (err) { $('p-err').textContent = err; return; }
+  if (q.step < Q_STEPS.length - 1) { q.step++; renderQ(); window.scrollTo(0, 0); return; }
+  const { step, newCode, name, city, brief, ...answers } = q;
+  answers.offer = answers.offer.trim();
+  settings = { ...settings, myName: name.trim(), city: city.trim(), pitch: brief.trim(), seller: answers };
   LS.set('ph_settings', settings);
-  $('p-save').disabled = true;
+  $('q-next').disabled = true;
   try { if (usingProxy()) await saveProfile(); show('home'); }
   catch (e) { $('p-err').textContent = e.message; }
-  $('p-save').disabled = false;
+  $('q-next').disabled = false;
 };
 
 /* ---------- environment checks ---------- */

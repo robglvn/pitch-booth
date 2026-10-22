@@ -1,0 +1,257 @@
+/*
+  PITCH BOOTH — industries and call types
+
+  Every practice call is generated fresh: the app picks one customer type from the person's industry,
+  mixes in a random personality, mood, age and background, and the AI turns that into a specific human.
+  So each industry only needs a handful of ingredients, not every possible scenario.
+
+  To add an industry, copy any entry below and edit it:
+    label, emoji, examples   what people see in the questionnaire
+    audience                 'people' (individuals and families) or 'businesses'
+    calls                    which call types are ticked by default (see CALL_TYPES)
+    offer, customer, edge, price   placeholder examples for the questionnaire
+    goals                    tap-to-fill answers for "What do you ask for at the end of a call?"
+    objections               common pushback, offered as chips (people pick the ones they hear)
+    types                    kinds of customers they'll meet; one is picked per call
+                             { label: short name shown after the call, desc: who they are and what's really going on }
+*/
+window.PB_CALL_TYPES = {
+  cold: {
+    emoji: '☎️', label: 'Cold call', tag: 'Never heard of you', desc: "They've never heard of you",
+    home: "Someone who's never heard of you picks up. Earn their attention.",
+    goal: 'earn their attention in the first seconds, spark real interest, and book a next step',
+    prospect: 'They have never heard of the caller; this is a cold call out of nowhere.',
+    opening: "someone you don't know is calling you",
+  },
+  interested: {
+    emoji: '📝', label: 'Interested lead', tag: 'They reached out', desc: 'They asked for info or a quote',
+    home: 'They reached out first. Find out what they need and win them.',
+    goal: 'find out what they really need, recommend the right fit, and book or close',
+    prospect: 'A few days ago they reached out or asked for information or a quote, so they expect the call, but they have questions, hesitations, and maybe other options.',
+    opening: 'someone is calling back about what you asked about',
+  },
+  followup: {
+    emoji: '🔁', label: 'Follow-up', tag: 'Went quiet', desc: 'You talked before; they went quiet',
+    home: '"Let me think about it" went quiet. Re-engage and get a decision.',
+    goal: 're-engage them, uncover what is really holding them back, and get a clear decision',
+    prospect: "They already talked with the caller once, said they'd think about it (or stopped replying), and haven't decided.",
+    opening: 'someone you talked with before is following up with you',
+  },
+  past: {
+    emoji: '⭐', label: 'Past customer', tag: 'Bought before', desc: 'They bought from you before',
+    home: 'They bought before. Reconnect, rebook, upgrade, or ask for a referral.',
+    goal: 'reconnect, then rebook, renew, upgrade, or ask for a referral',
+    prospect: "They bought from the caller before. It's been a while, and they may have drifted, had a so-so experience, or simply forgotten to come back.",
+    opening: "someone whose business you've used before is calling you",
+  },
+};
+
+window.PB_INDUSTRIES = {
+  insurance: {
+    label: 'Insurance', emoji: '🛡️', examples: 'Life, final expense, health, Medicare, auto/home', audience: 'people',
+    calls: ['cold', 'interested', 'followup', 'past'],
+    offer: 'e.g. Term and whole life insurance', customer: 'e.g. Young families and new homeowners, 28–45',
+    edge: 'e.g. I shop 20+ carriers for the best rate, and most people qualify without a medical exam', price: 'e.g. Most families pay $30–60 a month',
+    goals: ['Book a 20-minute call to go over options', 'Schedule a video meeting', 'Start an application'],
+    objections: ['I already have coverage through work', "It's too expensive right now", 'I need to talk to my spouse', "I'm young and healthy, I don't need it", 'Just email me a quote', "I don't trust insurance salespeople"],
+    types: [
+      { label: 'New parents', desc: 'Just had a baby or bought a house; know they "should" get coverage but keep putting it off, and money feels tight.' },
+      { label: 'Covered through work', desc: 'Has a small group policy from their job and assumes that is enough; has no idea it ends if they leave.' },
+      { label: 'Young and invincible', desc: 'Single, healthy, mid-20s; thinks life insurance is for old people and resents being sold to.' },
+      { label: 'Retiree on a fixed income', desc: 'Late 60s or 70s, worried about leaving funeral costs to their kids, but every dollar is spoken for and they fear scams.' },
+      { label: 'Turning 65', desc: 'Overwhelmed by Medicare mail and calls; confused about supplements vs Advantage and suspicious of everyone.' },
+      { label: 'Self-employed', desc: 'Freelancer or contractor buying their own health or life coverage; price-sensitive and wants straight answers fast.' },
+      { label: 'Burned by an agent', desc: 'A past agent sold them something they did not need or let a policy lapse; assumes you are the same.' },
+      { label: 'Small business owner', desc: 'Needs key-person or buy-sell coverage but thinks of insurance as a cost, not protection; very busy.' },
+    ],
+  },
+  real_estate: {
+    label: 'Real estate', emoji: '🏡', examples: "Listing and buyer's agents, mortgage and loan officers", audience: 'people',
+    calls: ['cold', 'interested', 'followup', 'past'],
+    offer: 'e.g. I help homeowners sell for top dollar', customer: 'e.g. Homeowners who have lived in their house 7+ years',
+    edge: 'e.g. My listings sell in 18 days on average, 9 days faster than the area', price: 'e.g. 2.5% commission',
+    goals: ['Book a free home valuation', 'Schedule a listing appointment', 'Get pre-approved'],
+    objections: ["We're not ready to sell yet", 'We already have an agent', 'Your commission is too high', "We'll just sell it ourselves", "The market isn't right", 'Rates are too high to buy right now'],
+    types: [
+      { label: 'Expired listing', desc: 'Their house sat on the market with another agent and did not sell; frustrated, defensive, and getting ten calls a day.' },
+      { label: 'For sale by owner', desc: 'Trying to sell it themselves to save the commission; proud of their progress and allergic to agents.' },
+      { label: 'Empty nesters', desc: 'Kids moved out, house feels too big, emotionally attached to it and unsure where they would go.' },
+      { label: 'First-time buyers', desc: 'Renting, nervous about rates and down payments, not sure they can afford anything they like.' },
+      { label: 'Relocating for work', desc: 'Moving in 60 days, stressed, needs it handled fast and wants someone competent, not chatty.' },
+      { label: 'Curious, not ready', desc: 'Wants to know what the house is worth "just to know"; might sell in a year or two, maybe never.' },
+      { label: 'Investor', desc: 'Owns a few rentals, thinks in numbers only, and will grind you on fees and cap rates.' },
+      { label: 'Inherited a house', desc: 'A parent passed and left them a house they do not want to deal with; grieving and overwhelmed.' },
+    ],
+  },
+  home_services: {
+    label: 'Home services', emoji: '🔧', examples: 'Solar, roofing, HVAC, pest control, windows, pools, security', audience: 'people',
+    calls: ['cold', 'interested', 'followup', 'past'],
+    offer: 'e.g. Solar panels with no money down', customer: 'e.g. Homeowners with high summer power bills',
+    edge: 'e.g. Local crew, 25-year warranty, and we handle all the permits', price: 'e.g. Most homes save $80–150 a month',
+    goals: ['Book a free in-home estimate', 'Schedule an inspection', 'Get them on the calendar this week'],
+    objections: ['Not interested', "It's too expensive", 'I need to talk to my spouse', 'I already got a quote', 'Now is a bad time', "I'll do it myself"],
+    types: [
+      { label: 'Getting three quotes', desc: 'Already talked to two competitors and is comparing purely on price; wants you to be the cheapest.' },
+      { label: 'Emergency', desc: 'Something just broke (AC out, roof leak, bugs) and they are stressed and want someone today.' },
+      { label: 'Skeptical of door-knockers', desc: 'Has been hounded by solar and alarm salespeople and assumes every offer is a scam.' },
+      { label: 'Handy DIYer', desc: 'Fixes most things themselves and thinks paying a pro is a waste unless you prove otherwise.' },
+      { label: 'Older homeowner', desc: 'Has lived in the house 30 years, cautious about contractors and big decisions, wants to trust you first.' },
+      { label: 'Busy family', desc: 'Two jobs and kids; the problem is real but scheduling anything feels impossible.' },
+      { label: 'Renter', desc: "Doesn't own the place and has to get the landlord's approval; can't decide anything alone." },
+    ],
+  },
+  personal_care: {
+    label: 'Personal care', emoji: '💈', examples: 'Barbers, salons, nails, lashes, spas, tattoo shops', audience: 'people',
+    calls: ['interested', 'followup', 'past'],
+    offer: 'e.g. Fades, beard work, and full restyles', customer: 'e.g. Guys 18–40 who care about looking sharp',
+    edge: 'e.g. Every cut starts with a real consultation, and I text you a reminder when you\'re due', price: 'e.g. $35 a cut, $50 with beard',
+    goals: ['Book the first appointment', 'Book a free consultation', 'Get them on a standing appointment'],
+    objections: ["I already have a barber I trust", 'Last time someone cut it, they ruined it', "That's more than I usually pay", "I'm growing it out", "I'll just do it myself", "I don't have time"],
+    types: [
+      { label: 'Growing it out', desc: 'Has long hair or is mid-grow-out and is terrified you will take too much off.' },
+      { label: 'Loyal to their stylist', desc: 'Has gone to the same person for years and feels guilty even thinking about switching.' },
+      { label: 'Burned by a bad cut', desc: 'Had a cut go badly wrong and now trusts nobody with their hair.' },
+      { label: 'Older traditionalist', desc: 'Has worn the same style for 30 years and distrusts anything trendy or new.' },
+      { label: 'Young trend-chaser', desc: 'Wants the latest style they saw online and doubts you can do modern cuts.' },
+      { label: 'DIY saver', desc: 'Cuts their own hair (or a friend does) to save money and thinks shops are overpriced.' },
+      { label: 'Busy professional', desc: 'Price barely matters; time does. Wants in and out, on schedule, every time.' },
+      { label: 'Special occasion', desc: 'Has a wedding, interview, or big event coming and needs it perfect, so they are nervous.' },
+    ],
+  },
+  fitness: {
+    label: 'Health & fitness', emoji: '💪', examples: 'Gyms, personal trainers, med spas, chiropractors, dental front desks', audience: 'people',
+    calls: ['interested', 'followup', 'past'],
+    offer: 'e.g. Personal training and small-group classes', customer: 'e.g. Busy adults 30–55 who want to get back in shape',
+    edge: 'e.g. A coach plans every session, and we check in weekly so people actually stick with it', price: 'e.g. Memberships from $129 a month',
+    goals: ['Book a free first session', 'Schedule a consultation', 'Sign up for the trial week'],
+    objections: ["It's too expensive", "I don't have time", "I've tried gyms before and quit", "I can work out at home", 'I need to lose some weight first', 'I need to check with my partner'],
+    types: [
+      { label: 'Starting over', desc: 'Used to be in shape, let it slide for years, and feels embarrassed walking into a gym.' },
+      { label: 'Serial quitter', desc: 'Has signed up and quit three times; afraid of wasting money again.' },
+      { label: 'Price comparer', desc: 'Pays $10 a month at a big-box gym and can not see why anyone pays more.' },
+      { label: 'Doctor told them to', desc: 'Health scare or doctor’s orders; motivated but anxious and unsure what is safe.' },
+      { label: 'Event goal', desc: 'Wedding, vacation, or reunion coming up; wants fast results and a clear plan.' },
+      { label: 'Pain or injury', desc: 'Back, neck, or knee pain they have lived with for years; skeptical anything will help.' },
+      { label: 'Busy parent', desc: 'Wants to do it but has zero free time and feels selfish taking an hour for themselves.' },
+    ],
+  },
+  auto: {
+    label: 'Auto', emoji: '🚗', examples: 'Car sales, dealership phone teams, detailing, repair shops', audience: 'people',
+    calls: ['cold', 'interested', 'followup', 'past'],
+    offer: 'e.g. New and used cars at a family-owned dealership', customer: 'e.g. Families shopping for a reliable SUV',
+    edge: 'e.g. No-haggle pricing and a 7-day exchange if you change your mind', price: 'e.g. Most payments land around $450 a month',
+    goals: ['Set a test-drive appointment', 'Book a service appointment', 'Get them in to see the car today'],
+    objections: ["I'm just looking", 'I can get it cheaper online', 'The payment is too high', 'I need to talk to my spouse', "I don't trust dealerships", 'My car still runs fine'],
+    types: [
+      { label: 'Internet shopper', desc: 'Has researched every price online and wants your best number before setting foot in the store.' },
+      { label: 'Payment-focused', desc: 'Only cares about the monthly payment and has shaky credit they are embarrassed about.' },
+      { label: 'Trade-in worried', desc: 'Owes more on their car than it is worth and is afraid of getting taken.' },
+      { label: 'Just looking', desc: 'Says they are months away, but their car is getting expensive to keep fixing.' },
+      { label: 'Dealership-wary', desc: 'Had a high-pressure experience before and expects games and hidden fees.' },
+      { label: 'Overdue for service', desc: 'Past customer whose car is overdue for maintenance; thinks the dealer just wants to upsell.' },
+    ],
+  },
+  financial: {
+    label: 'Financial', emoji: '📈', examples: 'Advisors, tax prep, credit repair', audience: 'people',
+    calls: ['cold', 'interested', 'followup', 'past'],
+    offer: 'e.g. Retirement planning and investment management', customer: 'e.g. Teachers and nurses 10–15 years from retirement',
+    edge: 'e.g. Flat-fee, no commissions, and I specialize in teachers and nurses', price: 'e.g. A flat $1,500 a year',
+    goals: ['Book a free portfolio review', 'Schedule a 30-minute intro call', 'Book their tax appointment'],
+    objections: ['I already have an advisor', "I'm handling it myself", 'Your fees are too high', 'Not with the market like this', 'I need to talk to my spouse', "I don't have enough money for an advisor"],
+    types: [
+      { label: 'DIY investor', desc: 'Manages their own index funds and thinks advisors are overpaid; proud of it.' },
+      { label: 'Behind on retirement', desc: 'In their 50s with little saved; anxious, a bit ashamed, and avoiding the topic.' },
+      { label: 'Has an advisor already', desc: 'Has had the same advisor for years, not thrilled, but switching feels like a hassle.' },
+      { label: 'Recent windfall', desc: 'Got an inheritance, bonus, or sale and is scared of making a mistake with it.' },
+      { label: 'Credit rebuilding', desc: 'Got denied for a loan or apartment, embarrassed about their credit, wary of scams.' },
+      { label: 'Last-minute tax filer', desc: 'Stressed about taxes, owes money or is behind on filing, wants it handled.' },
+    ],
+  },
+  education: {
+    label: 'Education & coaching', emoji: '🎓', examples: 'Tutoring, coaches, school enrollment advisors', audience: 'people',
+    calls: ['interested', 'followup', 'past'],
+    offer: 'e.g. One-on-one math and SAT tutoring', customer: 'e.g. Parents of high schoolers aiming for college',
+    edge: 'e.g. Students improve a full letter grade in 8 weeks on average, or the next month is free', price: 'e.g. $70 an hour, packages of 10',
+    goals: ['Book a free assessment session', 'Schedule a call with both parents', 'Enroll for the next term'],
+    objections: ["It's too expensive", 'My kid has no time with sports', 'We tried a tutor before and it did not help', 'There are free videos online', 'I need to talk to my partner', "Let's wait until grades come out"],
+    types: [
+      { label: 'Worried parent', desc: 'Their kid is slipping and they feel guilty and anxious, but money is tight.' },
+      { label: 'High achiever', desc: 'Already doing well and wants an edge for a top school; demanding and detail-focused.' },
+      { label: 'Career changer', desc: 'Adult thinking about a program to switch careers; excited but scared of debt and failure.' },
+      { label: 'Skeptical of coaching', desc: 'Thinks coaches are self-help fluff and wants proof of real results.' },
+      { label: 'Overbooked family', desc: "Sports, music, and jobs; the need is real but there's no room in the week." },
+    ],
+  },
+  events: {
+    label: 'Events', emoji: '💍', examples: 'Wedding vendors, venues, photographers, catering', audience: 'people',
+    calls: ['interested', 'followup', 'past'],
+    offer: 'e.g. Wedding photography and video', customer: 'e.g. Engaged couples planning a 100–150 guest wedding',
+    edge: 'e.g. Sneak peeks within 48 hours, and a planning call so nothing is missed', price: 'e.g. Packages from $3,200',
+    goals: ['Book a venue tour', 'Schedule a planning call', 'Lock in the date with a deposit'],
+    objections: ["That's over our budget", "We're still looking at a few options", 'My cousin can do it for free', 'We need to ask our parents', "We haven't set a date yet", 'Can you match this other quote?'],
+    types: [
+      { label: 'Budget-stretched couple', desc: 'Planning a wedding on a tight budget and cutting everything they can.' },
+      { label: 'Parent paying', desc: "The bride's or groom's parent is footing the bill and has strong opinions." },
+      { label: 'Comparing five vendors', desc: 'Has a spreadsheet of options and wants you to justify every dollar.' },
+      { label: 'Last-minute planner', desc: 'Event is weeks away, stressed, and something just fell through.' },
+      { label: 'Corporate planner', desc: 'Organizing a company event; cares about reliability, invoices, and not getting blamed.' },
+    ],
+  },
+  marketing: {
+    label: 'Marketing & creative', emoji: '🎬', examples: 'Agencies, videographers, web design, social media managers', audience: 'businesses',
+    calls: ['cold', 'interested', 'followup', 'past'],
+    offer: 'e.g. Photos and short-form video for local businesses', customer: 'e.g. Restaurants, gyms and shops with under 20 staff',
+    edge: 'e.g. I shoot, edit and post, so owners get fresh content every week without lifting a finger', price: 'e.g. Monthly packages from $400',
+    goals: ['Book a free sample shoot', 'Set up a 15-minute call', 'Send a proposal after a quick call'],
+    objections: ["It's too expensive / we don't have the budget", 'We tried that before and it flopped', 'My nephew (or a staff member) does our Instagram', "I don't have time for this", "We're doing fine with word of mouth", 'Just send me an email'],
+    types: [
+      { label: 'Word-of-mouth restaurant', desc: 'A busy family restaurant owner who has never paid for marketing and thinks it is for chains.' },
+      { label: 'Burned by an agency', desc: 'A shop owner who paid an agency for months and got nothing measurable.' },
+      { label: 'Nephew does it', desc: 'A gym or salon owner whose relative or staffer posts "when they get to it".' },
+      { label: 'Numbers person', desc: 'A dental office or clinic manager who wants ROI, examples, and proof.' },
+      { label: 'Trying to grow', desc: 'A newer business owner hungry for customers but with almost no budget.' },
+      { label: 'Franchise owner', desc: 'Has to follow corporate brand rules and is not sure what they are allowed to do locally.' },
+    ],
+  },
+  software: {
+    label: 'Software', emoji: '💻', examples: 'Sales reps booking demos and closing deals', audience: 'businesses',
+    calls: ['cold', 'interested', 'followup', 'past'],
+    offer: 'e.g. Scheduling and billing software for clinics', customer: 'e.g. Independent clinics with 2–15 providers',
+    edge: 'e.g. Set up in a day, and it cuts no-shows by about a third', price: 'e.g. $99 a month per location',
+    goals: ['Book a 30-minute demo', 'Start a free trial', 'Get a call with the decision maker'],
+    objections: ['We already use another tool', 'No budget this quarter', 'Switching would be too much work', 'Just send me a demo video', "I'm not the one who decides", 'We built something in-house'],
+    types: [
+      { label: 'Happy with current tool', desc: 'Uses a competitor, has small gripes, and dreads the pain of switching.' },
+      { label: 'Not the decision maker', desc: 'An office manager who likes the idea but has to sell it to an owner or partner.' },
+      { label: 'Spreadsheet loyalist', desc: 'Runs everything on spreadsheets and paper and does not see the problem.' },
+      { label: 'Budget freeze', desc: 'Interested, but spending is frozen until next quarter or next year.' },
+      { label: 'Technical skeptic', desc: 'An IT-minded person who will ask about security, integrations, and data.' },
+      { label: 'Growing fast', desc: 'Adding staff quickly; current tools are breaking, but they have no time to evaluate.' },
+    ],
+  },
+  b2b_services: {
+    label: 'Business services', emoji: '🤝', examples: 'Staffing, commercial cleaning, IT support, payroll, payments, business loans', audience: 'businesses',
+    calls: ['cold', 'interested', 'followup', 'past'],
+    offer: 'e.g. Commercial cleaning for offices', customer: 'e.g. Offices and clinics with 10–50 people',
+    edge: 'e.g. Bonded crews, the same team every visit, and we fix any miss within 24 hours', price: 'e.g. Most offices pay $600–1,200 a month',
+    goals: ['Book a walkthrough', 'Send a proposal after a quick call', 'Get a meeting with the owner'],
+    objections: ["We're happy with who we have", "It's not in the budget", 'Send me something in writing', "I'm not the right person", 'Call back next quarter', "We're locked into a contract"],
+    types: [
+      { label: 'Locked into a contract', desc: 'Unhappy with their current provider but stuck in a contract for months.' },
+      { label: 'Gatekeeper', desc: 'A receptionist or assistant whose job is to keep salespeople away from the owner.' },
+      { label: 'Price-only buyer', desc: 'Sees the service as a commodity and only wants the lowest bid.' },
+      { label: 'Fed up with current vendor', desc: 'Just had a bad experience with their provider and is quietly looking.' },
+      { label: 'Owner does everything', desc: 'A small business owner wearing every hat who has never outsourced anything.' },
+      { label: 'Growing pains', desc: 'Business is growing faster than their systems; they know they need help but fear the cost.' },
+    ],
+  },
+  other: {
+    label: 'Something else', emoji: '✨', examples: 'Anything not listed', audience: '',
+    calls: ['cold', 'interested', 'followup', 'past'],
+    offer: 'e.g. What you sell, in plain words', customer: 'e.g. Who usually buys from you',
+    edge: 'e.g. The one reason people pick you over the alternatives', price: 'e.g. Typical price or package',
+    goals: ['Book a meeting', 'Schedule a call back', 'Close the sale'],
+    objections: ["It's too expensive", 'Just send me an email', "I don't have time for this", 'I need to think about it', 'I need to ask my partner first', 'Not interested'],
+    types: [], // The AI invents customer types from the person's own answers.
+  },
+};
