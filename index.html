@@ -1,10 +1,11 @@
 <!--
   PITCH BOOTH — AI sales-call practice by voice
 
-  Hosted on Vercel. People join with an invite link (…/#invite=CODE) made on /admin;
-  their profile and calls live in the site's database, and the server holds the API key.
-  Alternatively, paste your own Anthropic API key in Settings: requests then go straight to
-  api.anthropic.com and history stays in this browser's localStorage.
+  Hosted on Vercel. People join with an invite link (…/#invite=CODE) made on /admin, or by
+  typing the code on the welcome screen; their profile and calls live in the site's database,
+  and the server holds the API key. Alternatively, paste your own Anthropic API key on the
+  welcome screen: requests then go straight to api.anthropic.com and history stays in this
+  browser's localStorage.
 
   Voice needs Chrome or Edge, microphone permission, and a secure page (https or localhost).
   Hold the big button (or Space) to talk, release to send. You can also type.
@@ -124,6 +125,17 @@
   ul.clean { padding-left: 18px; margin: 6px 0 0; }
   ul.clean li { margin-bottom: 8px; }
   details summary { cursor: pointer; color: var(--muted); }
+  /* Welcome (first visit) */
+  .welcome { max-width: 480px; margin: 5vh auto 0; }
+  .welcome h1 { font-size: 30px; line-height: 1.2; letter-spacing: -0.02em; margin: 0 0 8px; text-align: center; }
+  .welcome .lead { color: var(--muted); font-size: 16px; margin: 0 0 22px; text-align: center; }
+  .welcome .card { padding: 22px; }
+  .how { list-style: none; padding: 0; margin: 0 0 22px; display: grid; gap: 10px; }
+  .how li { display: flex; gap: 12px; align-items: center; font-size: 15px; }
+  .how .n { width: 30px; height: 30px; flex: none; border-radius: 50%; background: var(--green-dim); color: var(--green); display: grid; place-items: center; font-weight: 700; }
+  .code-input { font-size: 22px; text-align: center; letter-spacing: .12em; padding: 14px; }
+  .btn.big { width: 100%; padding: 14px; font-size: 17px; margin-top: 14px; }
+  .w-err { color: #fca5a5; font-size: 14px; margin-top: 10px; min-height: 1em; }
   .hist-row { display: grid; grid-template-columns: 120px 1fr 110px 60px; gap: 12px; align-items: center; padding: 12px; border-top: 1px solid var(--border); cursor: pointer; font-size: 14px; }
   .hist-row:hover { background: var(--panel-2); }
   .pill { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
@@ -160,7 +172,7 @@
 <div class="wrap">
   <header class="top">
     <div class="brand" id="brand" style="cursor:pointer"><span class="dot"></span>Pitch Booth</div>
-    <div class="row">
+    <div class="row" id="top-nav">
       <button class="icon-btn" id="btn-history">History</button>
       <button class="icon-btn" id="btn-settings">⚙ Settings</button>
     </div>
@@ -168,6 +180,48 @@
 
   <div id="env-banner"></div>
   <div id="err-banner" class="banner err hidden"></div>
+
+  <!-- WELCOME: step 1 gets you in, step 2 sets up your profile -->
+  <section id="view-welcome" class="hidden">
+    <div class="welcome" id="w-join">
+      <h1>Practice your sales calls</h1>
+      <p class="lead">Talk to a pretend business owner, then get a score and tips.</p>
+      <ol class="how">
+        <li><span class="n">1</span>A business owner picks up the phone</li>
+        <li><span class="n">2</span>You pitch them, out loud</li>
+        <li><span class="n">3</span>You get a score and tips to get better</li>
+      </ol>
+      <div class="card">
+        <label for="w-code" style="margin-top:0">Your invite code</label>
+        <input id="w-code" class="code-input" placeholder="abc-123" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="40">
+        <div class="w-err" id="w-err"></div>
+        <button class="btn primary big" id="w-go">Let's go</button>
+        <p class="small muted" style="margin:14px 0 0;text-align:center">No code? Ask the person who invited you.</p>
+      </div>
+      <details style="margin-top:16px">
+        <summary class="small">Have your own Anthropic API key?</summary>
+        <div class="row" style="flex-wrap:nowrap;margin-top:10px">
+          <input id="w-key" type="password" placeholder="sk-ant-…" autocomplete="off" spellcheck="false">
+          <button class="btn" id="w-key-go" style="flex:none">Use key</button>
+        </div>
+        <div class="small muted" style="margin-top:6px">Stored only in this browser and sent only to api.anthropic.com. Your history stays in this browser.</div>
+      </details>
+    </div>
+    <div class="welcome hidden" id="w-about">
+      <h1>Nice to meet you 👋</h1>
+      <p class="lead">Two quick things so the coach can help you.</p>
+      <div class="card">
+        <label for="p-name" style="margin-top:0">What's your name?</label>
+        <input id="p-name" placeholder="e.g. Maria" maxlength="80">
+        <label for="p-sells">What do you sell?</label>
+        <textarea id="p-sells" rows="4" placeholder="e.g. &quot;Photos and short videos for local restaurants. Monthly packages, a few hundred a month.&quot;"></textarea>
+        <label for="p-city">Your city <span style="color:var(--dim)">(optional)</span></label>
+        <input id="p-city" placeholder="e.g. San Antonio, TX" maxlength="120">
+        <div class="w-err" id="p-err"></div>
+        <button class="btn primary big" id="p-save">Start practicing</button>
+      </div>
+    </div>
+  </section>
 
   <!-- HOME -->
   <section id="view-home">
@@ -279,15 +333,21 @@
 <div class="modal-bg hidden" id="settings-modal">
   <div class="card modal">
     <h2>Settings</h2>
-    <label for="s-invite">Invite code</label>
-    <input id="s-invite" placeholder="e.g. k7m-q2p" autocomplete="off" spellcheck="false" maxlength="40">
-    <div class="small muted" style="margin-top:4px">Your invite code is your login: it keeps your profile and calls on any device.</div>
-    <label for="s-key">Or use your own Anthropic API key (advanced)</label>
-    <div class="row" style="flex-wrap:nowrap">
-      <input id="s-key" type="password" placeholder="sk-ant-…" autocomplete="off" spellcheck="false">
-      <button class="btn" id="s-key-show" style="flex:none">Show</button>
-    </div>
-    <div class="small muted" style="margin-top:4px">Only if you don't have an invite. Stored only in this browser, sent only to api.anthropic.com, and your history stays in this browser.</div>
+    <label for="s-name">Your name</label>
+    <input id="s-name" placeholder="e.g. Rob">
+    <label for="s-pitch">What you sell</label>
+    <textarea id="s-pitch" rows="4"></textarea>
+    <div class="small muted" style="margin-top:4px">The coach uses this to judge your pitch.</div>
+    <label for="s-city">Your city <span style="color:var(--dim)">(optional)</span></label>
+    <input id="s-city" placeholder="e.g. San Antonio, TX">
+    <label class="row small" style="color:var(--text);margin-top:18px"><input type="checkbox" id="s-voice-on" style="width:auto"> Read the owner's replies out loud</label>
+    <details id="s-more" style="margin-top:16px">
+    <summary>More options</summary>
+    <label for="s-voice">Voice</label>
+    <select id="s-voice"></select>
+    <label for="s-rate">Speaking speed <span id="s-rate-v"></span></label>
+    <input id="s-rate" type="range" min="0.7" max="1.4" step="0.05" style="padding:0">
+    <button class="btn" id="s-test-voice" style="margin-top:10px">Test voice</button>
     <label>AI quality</label>
     <div class="presets" id="s-preset">
       <button data-p="realistic"><b>Most realistic</b><span>Sonnet plays the owner</span><em>est. 8–12¢ / call</em></button>
@@ -321,45 +381,17 @@
       <option value="claude-haiku-5-5">
       <option value="claude-fable-5-1">
     </datalist>
-    <label for="s-name">Your name</label>
-    <input id="s-name" placeholder="e.g. Rob">
-    <label for="s-city">Your city / area (optional, makes personas local)</label>
-    <input id="s-city" placeholder="e.g. San Antonio, TX">
-    <label for="s-pitch">What you sell (the coach uses this to judge your pitch)</label>
-    <textarea id="s-pitch" rows="5"></textarea>
-    <label>Owner voice</label>
-    <div class="row">
-      <label class="row small" style="margin:0;color:var(--text);width:auto"><input type="checkbox" id="s-voice-on" style="width:auto"> Speak owner replies aloud</label>
+    <label>Account</label>
+    <div class="row" style="justify-content:space-between">
+      <span class="small muted" id="s-account"></span>
+      <button class="btn" id="s-signout">Sign out</button>
     </div>
-    <label for="s-voice">Voice</label>
-    <select id="s-voice"></select>
-    <label for="s-rate">Speaking speed <span id="s-rate-v"></span></label>
-    <input id="s-rate" type="range" min="0.7" max="1.4" step="0.05" style="padding:0">
-    <div class="row" style="margin-top:20px;justify-content:space-between">
-      <div class="row">
-        <button class="btn primary" id="s-save">Save</button>
-        <button class="btn" id="s-cancel">Cancel</button>
-        <button class="btn" id="s-test-voice">Test voice</button>
-      </div>
-      <button class="btn" id="s-clear" style="color:var(--red)">Clear history</button>
+    <button class="btn" id="s-clear" style="color:var(--red);margin-top:14px">Clear history</button>
+    </details>
+    <div class="row" style="margin-top:20px">
+      <button class="btn primary" id="s-save">Save</button>
+      <button class="btn" id="s-cancel">Cancel</button>
     </div>
-  </div>
-</div>
-
-<!-- FIRST-VISIT PROFILE MODAL -->
-<div class="modal-bg hidden" id="profile-modal">
-  <div class="card modal">
-    <h2>Welcome to Pitch Booth 👋</h2>
-    <p class="muted small" style="margin:0">Set up your profile once. It follows your invite link to any device.</p>
-    <label for="p-name">Your name</label>
-    <input id="p-name" placeholder="e.g. Maria" maxlength="80">
-    <label for="p-sells">What do you sell?</label>
-    <textarea id="p-sells" rows="5" placeholder="What you offer, who you sell to, and rough pricing. e.g. &quot;I do photo and short-form video for local restaurants and shops. Monthly packages, around a few hundred a month.&quot;"></textarea>
-    <div class="small muted" style="margin-top:4px">The coach uses this to judge whether your pitch fits what each owner needs.</div>
-    <label for="p-city">Your city / area (optional, makes the owners local)</label>
-    <input id="p-city" placeholder="e.g. San Antonio, TX" maxlength="120">
-    <div class="small" id="p-err" style="margin-top:10px;color:#fca5a5"></div>
-    <div class="row" style="margin-top:18px"><button class="btn primary" id="p-save">Save and start practicing</button></div>
   </div>
 </div>
 
@@ -453,7 +485,11 @@ async function api(path, opts = {}) {
     res = await fetch(path, { ...opts, headers: { 'content-type': 'application/json', 'x-invite-code': settings.inviteCode, ...(opts.headers || {}) } });
   } catch { throw new FriendlyError("Couldn't reach the practice server. Check your internet connection."); }
   try { data = await res.json(); } catch { data = {}; }
-  if (!res.ok) throw new FriendlyError(friendlyApiError(res.status, data?.error?.message || '', '', true, data?.error?.type));
+  if (!res.ok) {
+    const err = new FriendlyError(friendlyApiError(res.status, data?.error?.message || '', '', true, data?.error?.type));
+    err.type = data?.error?.type;
+    throw err;
+  }
   return data;
 }
 
@@ -558,11 +594,12 @@ const completedCount = () => history.length;
 const brutalUnlocked = () => completedCount() >= BRUTAL_UNLOCK;
 
 /* ---------- views ---------- */
-const VIEWS = ['home', 'setup', 'call', 'score', 'history'];
+const VIEWS = ['welcome', 'home', 'setup', 'call', 'score', 'history'];
 let currentView = 'home';
 function show(v) {
   currentView = v;
   VIEWS.forEach(x => $('view-' + x).classList.toggle('hidden', x !== v));
+  $('top-nav').classList.toggle('hidden', v === 'welcome');
   hideError();
   if (v === 'home') renderHome();
   if (v === 'history') renderHistory();
@@ -583,8 +620,8 @@ class FriendlyError extends Error {}
 async function callClaude({ model, system, messages, maxTokens = 2000, effort, schema, cache = false, track, role }) {
   const viaProxy = usingProxy();
   if (viaProxy ? !settings.inviteCode : !settings.apiKey) {
-    openSettings();
-    throw new FriendlyError(viaProxy ? 'Enter your invite code in Settings first.' : 'Add your Anthropic API key in Settings first.');
+    showWelcome('join');
+    throw new FriendlyError('Enter your invite code first.');
   }
   model = (model || DEFAULT_SETTINGS.personaModel).trim();
   let useFallbacks = FALLBACK_MODELS.has(model);
@@ -636,7 +673,7 @@ async function callClaude({ model, system, messages, maxTokens = 2000, effort, s
 
 function friendlyApiError(status, msg, model, viaProxy, type) {
   if (viaProxy) {
-    if (type === 'invalid_invite') return "That invite code wasn't recognized. Check it in Settings, or ask the person who invited you for a new one.";
+    if (type === 'invalid_invite') return "That code didn't work. Check it for typos, or ask the person who invited you for a new one.";
     if (type === 'daily_limit' || type === 'bad_origin' || type === 'model_not_allowed') return msg;
     if (status === 401) return 'The practice server\'s API key was rejected. Let the person who invited you know.';
     if (status === 400 && /credit balance/i.test(msg)) return 'The practice server is out of API credits. Let the person who invited you know.';
@@ -1451,13 +1488,12 @@ $('setup-cancel').onclick = () => show('home');
 $('mode-random').onclick = () => startCall(buildConfig('random'));
 $('mode-scenario').onclick = () => openSetup('scenario');
 $('mode-drill').onclick = () => openSetup('drill');
-$('brand').onclick = () => { if (currentView === 'call' && call && !call.ended) return; show('home'); };
+$('brand').onclick = () => { if (currentView === 'welcome' || (currentView === 'call' && call && !call.ended)) return; show('home'); };
 $('btn-history').onclick = () => { if (currentView === 'call' && call && !call.ended) return; show('history'); };
 
 /* ---------- settings ---------- */
 function openSettings() {
-  $('s-key').value = settings.apiKey;
-  $('s-invite').value = settings.inviteCode || '';
+  $('s-account').textContent = usingProxy() ? `Signed in with code ${settings.inviteCode}` : 'Using your own Anthropic API key';
   draftPreset = settings.preset;
   ['owner', 'persona', 'coach'].forEach(r => { $(`s-${r}-model`).value = roleModel(r); });
   $('s-owner-effort').value = settings.ownerEffort;
@@ -1492,14 +1528,10 @@ document.querySelectorAll('#s-preset button').forEach(b => b.onclick = () => {
 $('btn-settings').onclick = openSettings;
 $('s-cancel').onclick = closeSettings;
 $('settings-modal').onclick = e => { if (e.target.id === 'settings-modal') closeSettings(); };
-$('s-key-show').onclick = () => { const k = $('s-key'); k.type = k.type === 'password' ? 'text' : 'password'; $('s-key-show').textContent = k.type === 'password' ? 'Show' : 'Hide'; };
 $('s-rate').oninput = () => { $('s-rate-v').textContent = `(${(+$('s-rate').value).toFixed(2)}×)`; };
 $('s-save').onclick = async () => {
-  const prevCode = settings.inviteCode, prevKey = settings.apiKey;
   settings = {
     ...settings,
-    apiKey: $('s-key').value.trim(),
-    inviteCode: $('s-invite').value.trim(),
     preset: draftPreset,
     ownerModel: $('s-owner-model').value.trim() || DEFAULT_SETTINGS.ownerModel,
     personaModel: $('s-persona-model').value.trim() || DEFAULT_SETTINGS.personaModel,
@@ -1516,8 +1548,6 @@ $('s-save').onclick = async () => {
   };
   if (!LS.set('ph_settings', settings)) showError("Couldn't save settings — localStorage is blocked in this browser.");
   closeSettings();
-  if (settings.inviteCode !== prevCode || settings.apiKey !== prevKey) { init(); return; }
-  renderEnv();
   if (usingProxy() && profile) {
     try { await saveProfile(); } catch (e) { showError("Couldn't save your profile: " + e.message); }
   }
@@ -1535,23 +1565,67 @@ $('s-clear').onclick = async () => {
   }
   history = []; saveHistory(); closeSettings(); show('home');
 };
+// Signing out of an invite forgets that person's profile here; it stays saved on the server.
+$('s-signout').onclick = () => {
+  settings = usingProxy()
+    ? { ...settings, inviteCode: '', apiKey: '', myName: '', city: '', pitch: DEFAULT_SETTINGS.pitch }
+    : { ...settings, inviteCode: '', apiKey: '' };
+  LS.set('ph_settings', settings);
+  closeSettings();
+  init();
+};
 
-/* ---------- first-visit profile setup ---------- */
-function openProfileSetup() {
-  $('p-name').value = settings.myName || '';
-  $('p-sells').value = profile?.sells || '';
-  $('p-city').value = settings.city || '';
-  $('p-err').textContent = '';
-  $('profile-modal').classList.remove('hidden');
-  $('p-name').focus();
+/* ---------- welcome: get in, then set up a profile ---------- */
+function showWelcome(step, err = '') {
+  show('welcome');
+  $('w-join').classList.toggle('hidden', step !== 'join');
+  $('w-about').classList.toggle('hidden', step !== 'about');
+  if (step === 'join') {
+    $('w-err').textContent = err;
+    $('w-code').focus();
+  } else {
+    $('p-name').value = settings.myName || '';
+    $('p-sells').value = usingProxy() ? (profile?.sells || '') : (settings.pitch === DEFAULT_SETTINGS.pitch ? '' : settings.pitch);
+    $('p-city').value = settings.city || '';
+    $('p-err').textContent = '';
+    $('p-name').focus();
+  }
 }
+
+async function joinWithCode() {
+  const code = $('w-code').value.trim().toLowerCase();
+  if (!code) { $('w-err').textContent = 'Type the code from your invite.'; return; }
+  $('w-err').textContent = '';
+  $('w-go').disabled = true; $('w-go').textContent = 'Checking…';
+  settings = { ...settings, inviteCode: code, apiKey: '' };
+  try {
+    await loadProfile();
+    LS.set('ph_settings', settings);
+    if (!profile.name || !profile.sells) showWelcome('about'); else show('home');
+  } catch (e) {
+    settings = { ...settings, inviteCode: '' };
+    $('w-err').textContent = e.message;
+  }
+  $('w-go').disabled = false; $('w-go').textContent = "Let's go";
+}
+$('w-go').onclick = joinWithCode;
+$('w-code').onkeydown = e => { if (e.key === 'Enter') joinWithCode(); };
+$('w-key-go').onclick = () => {
+  const key = $('w-key').value.trim();
+  if (!key) return;
+  settings = { ...settings, apiKey: key, inviteCode: '' };
+  LS.set('ph_settings', settings);
+  $('w-key').value = '';
+  init();
+};
+
 $('p-save').onclick = async () => {
   const name = $('p-name').value.trim(), sells = $('p-sells').value.trim();
-  if (!name || !sells) { $('p-err').textContent = 'Add your name and what you sell so the coach can judge your pitch.'; return; }
+  if (!name || !sells) { $('p-err').textContent = 'Add your name and what you sell so the coach can help you.'; return; }
   settings = { ...settings, myName: name, pitch: sells, city: $('p-city').value.trim() };
   LS.set('ph_settings', settings);
   $('p-save').disabled = true;
-  try { await saveProfile(); $('profile-modal').classList.add('hidden'); show('home'); }
+  try { if (usingProxy()) await saveProfile(); show('home'); }
   catch (e) { $('p-err').textContent = e.message; }
   $('p-save').disabled = false;
 };
@@ -1561,10 +1635,7 @@ function renderEnv() {
   const msgs = [];
   if (!window.isSecureContext) msgs.push('This page isn\'t in a secure context, so the microphone won\'t work. Serve it from localhost: run <code>python3 -m http.server 8777</code> in this folder and open <a href="http://localhost:8777">http://localhost:8777</a>.');
   if (!SR) msgs.push('This browser doesn\'t support speech recognition. Use Chrome or Edge for voice — you can still type your lines.');
-  if (!settings.inviteCode && !settings.apiKey) msgs.push('Pitch Booth is invite-only. Open the invite link you were sent, or enter your invite code in <a href="#" id="env-open-settings">Settings</a>.');
   $('env-banner').innerHTML = msgs.map(m => `<div class="banner warn">${m}</div>`).join('');
-  const link = $('env-open-settings');
-  if (link) link.onclick = e => { e.preventDefault(); openSettings(); };
 }
 
 window.addEventListener('beforeunload', e => { if (call && !call.ended && call.turns.length) { e.preventDefault(); e.returnValue = ''; } });
@@ -1573,14 +1644,16 @@ async function init() {
   profile = null;
   history = usingProxy() ? [] : LS.get('ph_history', []);
   renderEnv();
+  if (!settings.inviteCode && !settings.apiKey) { showWelcome('join'); return; }
+  if (!usingProxy()) { if (settings.myName) show('home'); else showWelcome('about'); return; }
   show('home');
-  if (!usingProxy()) return;
   try {
     await loadProfile();
-    show('home');
-    if (!profile.name || !profile.sells) openProfileSetup();
+    if (!profile.name || !profile.sells) showWelcome('about'); else show('home');
   } catch (e) {
-    showError(e.message);
+    // A revoked or mistyped code sends you back to the welcome screen instead of a broken home page.
+    if (e.type === 'invalid_invite') { settings = { ...settings, inviteCode: '' }; LS.set('ph_settings', settings); showWelcome('join', e.message); }
+    else showError(e.message);
   }
 }
 init();
