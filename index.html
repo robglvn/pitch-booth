@@ -135,6 +135,12 @@
   .pill.green { border-color: #1c5c33; color: #86efac; }
 
   /* Modal */
+  .presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .presets button { text-align: left; background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 3px; }
+  .presets button span { font-size: 12px; color: var(--muted); line-height: 1.35; }
+  .presets button em { font-size: 11px; font-style: normal; color: var(--dim); margin-top: auto; }
+  .presets button.on { border-color: var(--green); background: #0f2618; }
+  @media (max-width: 520px) { .presets { grid-template-columns: 1fr; } }
   .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: grid; place-items: center; padding: 16px; z-index: 10; }
   .modal { width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; }
   .loading { display: grid; place-items: center; gap: 14px; padding: 60px 0; text-align: center; }
@@ -282,8 +288,33 @@
       <button class="btn" id="s-key-show" style="flex:none">Show</button>
     </div>
     <div class="small muted" style="margin-top:4px">Stored only in this browser. Sent only to api.anthropic.com.</div>
-    <label for="s-model">Model</label>
-    <input id="s-model" list="model-list" spellcheck="false">
+    <label>AI quality</label>
+    <div class="presets" id="s-preset">
+      <button data-p="realistic"><b>Most realistic</b><span>Sonnet plays the owner</span><em>est. 8–12¢ / call</em></button>
+      <button data-p="balanced"><b>Balanced</b><span>Haiku plays the owner; Sonnet builds them and coaches</span><em>est. 5–8¢ / call</em></button>
+      <button data-p="budget"><b>Budget</b><span>Haiku does everything</span><em>est. 1–2¢ / call</em></button>
+    </div>
+    <div class="small muted" id="s-preset-note" style="margin-top:6px"></div>
+    <details id="s-advanced" style="margin-top:12px">
+      <summary>Fine-tuning</summary>
+      <label for="s-owner-model">Owner model (speaks every turn)</label>
+      <input id="s-owner-model" list="model-list" spellcheck="false">
+      <label for="s-persona-model">Persona builder model (once per call)</label>
+      <input id="s-persona-model" list="model-list" spellcheck="false">
+      <label for="s-coach-model">Coach model (once per call)</label>
+      <input id="s-coach-model" list="model-list" spellcheck="false">
+      <label for="s-owner-effort">Owner replies</label>
+      <select id="s-owner-effort">
+        <option value="low">Snappy: fastest, feels most like a real phone call</option>
+        <option value="medium">Thoughtful: a beat slower, reads between the lines more</option>
+      </select>
+      <label for="s-coach-effort">Coach feedback</label>
+      <select id="s-coach-effort">
+        <option value="medium">Standard</option>
+        <option value="high">Deep: more thorough review, costs a bit more</option>
+      </select>
+      <label class="row small" style="color:var(--text)"><input type="checkbox" id="s-cache" style="width:auto"> Prompt caching (recommended: same quality, much cheaper)</label>
+    </details>
     <datalist id="model-list">
       <option value="claude-sonnet-5-5">
       <option value="claude-opus-5-5">
@@ -326,7 +357,13 @@ const LS = {
 
 const DEFAULT_SETTINGS = {
   apiKey: '',
-  model: 'claude-sonnet-5-5',
+  preset: 'balanced',
+  ownerModel: 'claude-haiku-5-5',
+  personaModel: 'claude-sonnet-5-5',
+  coachModel: 'claude-sonnet-5-5',
+  ownerEffort: 'low',
+  coachEffort: 'medium',
+  cache: true,
   myName: '',
   city: '',
   pitch: "I'm a local videographer/photographer. I make photos and short-form video (Instagram/TikTok/Facebook reels) for small businesses: behind-the-scenes reels, product and menu photography, staff and owner features, event coverage. I offer monthly content packages so owners get fresh posts every week without doing it themselves.\n(Edit this with your real packages and pricing.)",
@@ -335,6 +372,34 @@ const DEFAULT_SETTINGS = {
   rate: 1,
 };
 let settings = { ...DEFAULT_SETTINGS, ...LS.get('ph_settings', {}) };
+delete settings.model; // replaced by presets / per-role models
+
+// Who plays which part. The owner talks every turn, so it's where a cheaper model saves the most.
+const PRESETS = {
+  realistic: { owner: 'claude-sonnet-5-5', persona: 'claude-sonnet-5-5', coach: 'claude-sonnet-5-5' },
+  balanced: { owner: 'claude-haiku-5-5', persona: 'claude-sonnet-5-5', coach: 'claude-sonnet-5-5' },
+  budget: { owner: 'claude-haiku-5-5', persona: 'claude-haiku-5-5', coach: 'claude-haiku-5-5' },
+};
+const roleModel = role => (PRESETS[settings.preset] || {})[role] || settings[role + 'Model'] || DEFAULT_SETTINGS[role + 'Model'];
+
+// $ per million tokens: [input, output, cache-read multiplier]. Cache writes are 1.25x input.
+const PRICES = {
+  'claude-haiku-5-5': [0.10, 0.50, 0.1],
+  'claude-sonnet-5-5': [2, 10, 0.1],
+  'claude-sonnet-5': [2, 10, 0.1],
+  'claude-opus-5-5': [4, 20, 0.05],
+  'claude-opus-5': [5, 25, 0.1],
+  'claude-fable-5-1': [10, 50, 0.025],
+};
+function addUsage(track, model, u) {
+  track.cost = track.cost || { cents: 0, uncachedCents: 0, known: true };
+  const p = PRICES[model];
+  if (!p || !u) { track.cost.known = false; return; }
+  const inp = u.input_tokens || 0, read = u.cache_read_input_tokens || 0, write = u.cache_creation_input_tokens || 0, out = u.output_tokens || 0;
+  track.cost.cents += (inp * p[0] + read * p[0] * p[2] + write * p[0] * 1.25 + out * p[1]) / 1e4;
+  track.cost.uncachedCents += ((inp + read + write) * p[0] + out * p[1]) / 1e4;
+}
+const fmtCents = c => c < 100 ? `${c < 10 ? c.toFixed(1) : Math.round(c)}¢` : `$${(c / 100).toFixed(2)}`;
 let history = LS.get('ph_history', []);
 const saveHistory = () => { if (!LS.set('ph_history', history)) showError("Couldn't save to localStorage (storage full or blocked)."); };
 
@@ -408,14 +473,18 @@ const enm = (values, description) => ({ type: 'string', enum: values, descriptio
 
 class FriendlyError extends Error {}
 
-async function callClaude({ system, messages, maxTokens = 2000, effort, schema }) {
+async function callClaude({ model, system, messages, maxTokens = 2000, effort, schema, cache = false, track }) {
   if (!settings.apiKey) { openSettings(); throw new FriendlyError('Add your Anthropic API key in Settings first.'); }
-  const model = (settings.model || DEFAULT_SETTINGS.model).trim();
+  model = (model || DEFAULT_SETTINGS.personaModel).trim();
   let useFallbacks = FALLBACK_MODELS.has(model);
   let useEffort = !!effort && supportsEffort(model);
+  let useCache = cache;
 
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 4; attempt++) {
     const body = { model, max_tokens: maxTokens, system, messages };
+    // Automatic caching: the conversation only ever grows, so each turn re-reads the
+    // previous turn's prefix from cache at ~10% of the input price.
+    if (useCache) body.cache_control = { type: 'ephemeral' };
     const oc = {};
     if (useEffort) oc.effort = effort;
     if (schema) oc.format = { type: 'json_schema', schema };
@@ -441,8 +510,10 @@ async function callClaude({ system, messages, maxTokens = 2000, effort, schema }
       // Older models or accounts may not accept these optional fields; retry without them.
       if (res.status === 400 && useFallbacks && /fallback/i.test(msg)) { useFallbacks = false; continue; }
       if (res.status === 400 && useEffort && /effort/i.test(msg)) { useEffort = false; continue; }
+      if (res.status === 400 && useCache && /cache/i.test(msg)) { useCache = false; continue; }
       throw new FriendlyError(friendlyApiError(res.status, msg, model));
     }
+    if (track) addUsage(track, model, data.usage);
     if (data.stop_reason === 'refusal') throw new FriendlyError('Claude declined to continue this turn. Try rephrasing what you said.');
     const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
     if (!schema) return text;
@@ -484,6 +555,7 @@ const PERSONA_SCHEMA = obj({
   speaking_style: str('How they talk: pace, verbal habits, vocabulary'),
   objections: { type: 'array', items: str('An objection in their own words'), description: '1–2 real objections' },
   win_condition: str('The secret thing that would actually win them over'),
+  right_now: str('What they are in the middle of when the phone rings (a delivery, a lunch rush, payroll, a customer at the counter), 1 sentence'),
   pickup_line: str('Exactly how they answer the business phone, matching their mood right now'),
   card_summary: str('Format: "<First name>, <age> — <owns ...>, <short personality note>". Under 90 characters.'),
   voice_gender: enm(['female', 'male']),
@@ -514,11 +586,13 @@ Respect and realism matter more than anything here. Identity and background are 
 
 The objections should be ones this person would genuinely have given their situation. The win condition should be specific and earnable by a caller who listens well.`;
   const { json } = await callClaude({
+    model: call.models.persona,
     system,
     messages: [{ role: 'user', content: `Create one persona with these constraints:\n${JSON.stringify(constraints, null, 2)}` }],
     maxTokens: 4000,
     effort: 'medium',
     schema: PERSONA_SCHEMA,
+    track: call,
   });
   json.voice_pitch = clamp(json.voice_pitch, 0.75, 1.25, 1);
   json.voice_rate = clamp(json.voice_rate, 0.85, 1.2, 1);
@@ -547,6 +621,7 @@ WHO YOU ARE
 - Salespeople: ${p.attitude_to_sales}
 - Small things that come through in how you talk: ${p.values_texture} Let these show only in passing — a word choice, a detail about your week, what you're proud of. Never bring up politics, never debate, never lecture.
 - How you talk: ${p.speaking_style}
+- Right now: ${p.right_now || 'You are in the middle of a normal workday.'} This can come up naturally (you're distracted, someone needs you, you have to step away).
 
 YOUR HIDDEN AGENDA (never state it outright)
 - Objections you raise when they naturally come up: ${p.objections.map(o => `"${o}"`).join('; ')}
@@ -556,6 +631,9 @@ YOUR HIDDEN AGENDA (never state it outright)
 HOW TO TALK
 - This is a phone call and everything in "say" is spoken aloud by a voice engine. Reply in 1–3 short sentences, usually under 30 words. Sound like real speech: contractions, fragments, "yeah", "look,", "hm". No lists, no stage directions, no asterisks, no emojis, no parentheses.
 - Don't make it easy. Don't volunteer information they haven't asked for, but answer real questions honestly as yourself.
+- React to the specific thing they just said, not to sales calls in general. Remember their name and everything they've told you, and bring it back up when it fits ("you said you do the reels yourself?").
+- Talk like a real person, not a script: sometimes answer a question with a question, go on a short tangent if it fits your personality, mishear, or trail off. Never repeat the same phrasing or the same objection word-for-word.
+- Your mood moves gradually. A good question warms you up a little; a canned line or a pitch you didn't ask for cools you down. You don't flip from cold to sold in one line.
 - If the caller launches into a pitch before they've asked you at least two real questions about your business, push back in character (for example: "Hold on — you don't even know what I need yet."). The call notes tell you how many discovery questions they've asked so far.
 - If the caller directly asks for a commitment or next step and has earned it, you can agree to something concrete (a meeting, a trial shoot). Otherwise, give your real hesitation.
 - Difficulty: ${DIFFICULTY_RULES[cfg.difficulty]}${drill}
@@ -660,6 +738,10 @@ async function startCall(cfg) {
     cfg, persona: null, messages: [], turns: [], startedAt: null, busy: true, ended: false,
     phasesSeen: new Set(), currentPhase: 'opener', discoveryCount: 0, questionCount: 0, statementCount: 0,
     askedForSale: false, trialClose: false, openerSecs: null, mood: 'guarded', rep: 1, reps: [], timerId: null, outcome: null,
+    // Fixed for the whole call: caches are per model and per effort, so changing either mid-call would miss.
+    models: { owner: roleModel('owner'), persona: roleModel('persona'), coach: roleModel('coach') },
+    ownerEffort: settings.ownerEffort, coachEffort: settings.coachEffort, cache: settings.cache,
+    cost: { cents: 0, uncachedCents: 0, known: true },
   };
   show('call');
   $('call-mode-label').textContent = modeLabel(cfg);
@@ -754,7 +836,7 @@ async function ownerTurn(callerTurn) {
   showTyping(true);
   let res;
   try {
-    res = await callClaude({ system: call.system, messages: call.messages, maxTokens: 1500, effort: 'low', schema: TURN_SCHEMA });
+    res = await callClaude({ model: call.models.owner, system: call.system, messages: call.messages, maxTokens: 1500, effort: call.ownerEffort, schema: TURN_SCHEMA, cache: call.cache, track: call });
   } catch (e) {
     showTyping(false);
     call.busy = false;
@@ -1062,7 +1144,7 @@ METRICS FROM THE CALL: ${JSON.stringify(metrics)}
 
 TRANSCRIPT (from speech recognition; ignore small transcription errors)
 ${transcriptText(c)}`;
-  const { json } = await callClaude({ system, messages: [{ role: 'user', content: user }], maxTokens: 8000, effort: 'medium', schema: GRADE_SCHEMA });
+  const { json } = await callClaude({ model: c.models.coach, system, messages: [{ role: 'user', content: user }], maxTokens: 12000, effort: c.coachEffort, schema: GRADE_SCHEMA, track: c });
   return json;
 }
 
@@ -1100,6 +1182,8 @@ async function endCall() {
     durationSecs,
     metrics: { discovery: c.discoveryCount, questions: c.questionCount, statements: c.statementCount, openerSecs: c.openerSecs },
     grade, overall,
+    models: c.models,
+    cost: c.cost,
     transcript: transcriptText(c),
     turns: c.turns,
   };
@@ -1113,6 +1197,14 @@ async function endCall() {
 /* ---------- scorecard ---------- */
 const scoreColor = v => v >= 7 ? 'var(--green)' : v >= 5 ? 'var(--amber)' : 'var(--red)';
 
+function costLine(e) {
+  const c = e.cost;
+  if (!c) return '';
+  if (!c.known) return '<span class="small muted">· cost unknown for this model</span>';
+  const saved = c.uncachedCents > 0 ? Math.round((1 - c.cents / c.uncachedCents) * 100) : 0;
+  return `<span class="small muted" title="Owner: ${esc(e.models?.owner)} · Persona: ${esc(e.models?.persona)} · Coach: ${esc(e.models?.coach)}">· cost ≈ ${fmtCents(c.cents)}${saved >= 5 ? ` (caching saved ${saved}%)` : ''}</span>`;
+}
+
 function renderScorecard(e, justUnlocked = false) {
   const g = e.grade, p = e.persona;
   const ratio = e.metrics.statements ? (e.metrics.questions / e.metrics.statements).toFixed(1) : '—';
@@ -1125,7 +1217,7 @@ function renderScorecard(e, justUnlocked = false) {
         <div style="flex:1;min-width:220px">
           <div style="font-weight:700;font-size:17px">${esc(p.card_summary)}</div>
           <div class="small muted">${esc(modeLabel(e))}${e.objection ? ` · “${esc(e.objection)}”` : ''} · ${fmt(e.durationSecs)} · ${new Date(e.date).toLocaleString()}</div>
-          <div style="margin-top:6px"><span class="pill ${/meeting|sale|follow/.test(g.outcome) ? 'green' : ''}">${esc(outcomeLabel)}</span></div>
+          <div style="margin-top:6px"><span class="pill ${/meeting|sale|follow/.test(g.outcome) ? 'green' : ''}">${esc(outcomeLabel)}</span> ${costLine(e)}</div>
         </div>
       </div>
       <p style="margin:14px 0 0">${esc(g.summary)}</p>
@@ -1200,7 +1292,8 @@ function renderHome() {
     ['Calls completed', n], ['Avg (last 5)', avg], ['Asked for the sale', askRate], ['Best score', best],
   ].map(([k, v]) => `<div class="card stat"><div class="v">${v}</div><div class="k">${k}</div></div>`).join('');
   $('home-trend').innerHTML = trendSVG(history);
-  $('unlock-note').textContent = brutalUnlocked() ? '🔓 Brutal unlocked' : `🔒 Brutal unlocks after ${BRUTAL_UNLOCK} calls (${n}/${BRUTAL_UNLOCK})`;
+  const spent = history.reduce((a, e) => a + (e.cost?.known ? e.cost.cents : 0), 0);
+  $('unlock-note').textContent = (brutalUnlocked() ? '🔓 Brutal unlocked' : `🔒 Brutal unlocks after ${BRUTAL_UNLOCK} calls (${n}/${BRUTAL_UNLOCK})`) + (spent ? ` · ≈ ${fmtCents(spent)} spent` : '');
 }
 
 function renderHistory() {
@@ -1255,7 +1348,12 @@ $('btn-history').onclick = () => { if (currentView === 'call' && call && !call.e
 /* ---------- settings ---------- */
 function openSettings() {
   $('s-key').value = settings.apiKey;
-  $('s-model').value = settings.model;
+  draftPreset = settings.preset;
+  ['owner', 'persona', 'coach'].forEach(r => { $(`s-${r}-model`).value = roleModel(r); });
+  $('s-owner-effort').value = settings.ownerEffort;
+  $('s-coach-effort').value = settings.coachEffort;
+  $('s-cache').checked = settings.cache;
+  renderPresets();
   $('s-name').value = settings.myName;
   $('s-city').value = settings.city;
   $('s-pitch').value = settings.pitch;
@@ -1267,6 +1365,20 @@ function openSettings() {
   $('settings-modal').classList.remove('hidden');
 }
 function closeSettings() { $('settings-modal').classList.add('hidden'); }
+
+let draftPreset = settings.preset;
+function renderPresets() {
+  document.querySelectorAll('#s-preset button').forEach(b => b.classList.toggle('on', b.dataset.p === draftPreset));
+  $('s-preset-note').textContent = draftPreset === 'custom'
+    ? 'Custom: using the models under Fine-tuning. Click a preset to go back.'
+    : 'Cost estimates are rough; each scorecard shows what the call actually cost.';
+}
+document.querySelectorAll('#s-preset button').forEach(b => b.onclick = () => {
+  draftPreset = b.dataset.p;
+  ['owner', 'persona', 'coach'].forEach(r => { $(`s-${r}-model`).value = PRESETS[draftPreset][r]; });
+  renderPresets();
+});
+['owner', 'persona', 'coach'].forEach(r => $(`s-${r}-model`).addEventListener('input', () => { draftPreset = 'custom'; renderPresets(); }));
 $('btn-settings').onclick = openSettings;
 $('s-cancel').onclick = closeSettings;
 $('settings-modal').onclick = e => { if (e.target.id === 'settings-modal') closeSettings(); };
@@ -1276,7 +1388,13 @@ $('s-save').onclick = () => {
   settings = {
     ...settings,
     apiKey: $('s-key').value.trim(),
-    model: $('s-model').value.trim() || DEFAULT_SETTINGS.model,
+    preset: draftPreset,
+    ownerModel: $('s-owner-model').value.trim() || DEFAULT_SETTINGS.ownerModel,
+    personaModel: $('s-persona-model').value.trim() || DEFAULT_SETTINGS.personaModel,
+    coachModel: $('s-coach-model').value.trim() || DEFAULT_SETTINGS.coachModel,
+    ownerEffort: $('s-owner-effort').value,
+    coachEffort: $('s-coach-effort').value,
+    cache: $('s-cache').checked,
     myName: $('s-name').value.trim(),
     city: $('s-city').value.trim(),
     pitch: $('s-pitch').value.trim() || DEFAULT_SETTINGS.pitch,
