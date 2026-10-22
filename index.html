@@ -1,17 +1,13 @@
 <!--
   PLEASE HOLD — AI sales-call practice by voice
 
-  HOW TO RUN
-  1. Browser: Chrome or Edge (they support the Web Speech API for the microphone).
-  2. Secure context: the mic only works on https:// or http://localhost.
-     From this folder run:   python3 -m http.server 8777
-     then open:              http://localhost:8777
-  3. Allow microphone access when Chrome asks.
-  4. Click the gear (Settings) and paste your Anthropic API key (console.anthropic.com).
-     The key is stored in this browser's localStorage and is only ever sent to api.anthropic.com.
-  5. Hold the big button (or hold Space) to talk, release to send. You can also type.
+  Hosted on Vercel. People join with an invite link (…/#invite=CODE) made on /admin;
+  their profile and calls live in the site's database, and the server holds the API key.
+  Alternatively, paste your own Anthropic API key in Settings: requests then go straight to
+  api.anthropic.com and history stays in this browser's localStorage.
 
-  Everything (settings, call history, scores) lives in localStorage on this machine.
+  Voice needs Chrome or Edge, microphone permission, and a secure page (https or localhost).
+  Hold the big button (or Space) to talk, release to send. You can also type.
 -->
 <!doctype html>
 <html lang="en">
@@ -175,6 +171,7 @@
 
   <!-- HOME -->
   <section id="view-home">
+    <h2 id="home-hello" class="hidden" style="font-size:22px;margin:0 0 14px"></h2>
     <div class="grid3">
       <button class="mode" id="mode-random">
         <div class="tag">Like real life</div>
@@ -282,17 +279,15 @@
 <div class="modal-bg hidden" id="settings-modal">
   <div class="card modal">
     <h2>Settings</h2>
-    <div id="s-invite-wrap" class="hidden">
-      <label for="s-invite">Invite code</label>
-      <input id="s-invite" placeholder="from the person who invited you" autocomplete="off" spellcheck="false">
-      <div class="small muted" style="margin-top:4px">With an invite code you don't need an API key. Leave the key field below empty.</div>
-    </div>
-    <label for="s-key" id="s-key-label">Anthropic API key</label>
+    <label for="s-invite">Invite code</label>
+    <input id="s-invite" placeholder="from your invite link" autocomplete="off" spellcheck="false">
+    <div class="small muted" style="margin-top:4px">Your invite code is your login: it keeps your profile and calls on any device.</div>
+    <label for="s-key">Or use your own Anthropic API key (advanced)</label>
     <div class="row" style="flex-wrap:nowrap">
       <input id="s-key" type="password" placeholder="sk-ant-…" autocomplete="off" spellcheck="false">
       <button class="btn" id="s-key-show" style="flex:none">Show</button>
     </div>
-    <div class="small muted" style="margin-top:4px">Stored only in this browser. Sent only to api.anthropic.com.</div>
+    <div class="small muted" style="margin-top:4px">Only if you don't have an invite. Stored only in this browser, sent only to api.anthropic.com, and your history stays in this browser.</div>
     <label>AI quality</label>
     <div class="presets" id="s-preset">
       <button data-p="realistic"><b>Most realistic</b><span>Sonnet plays the owner</span><em>est. 8–12¢ / call</em></button>
@@ -348,6 +343,23 @@
       </div>
       <button class="btn" id="s-clear" style="color:var(--red)">Clear history</button>
     </div>
+  </div>
+</div>
+
+<!-- FIRST-VISIT PROFILE MODAL -->
+<div class="modal-bg hidden" id="profile-modal">
+  <div class="card modal">
+    <h2>Welcome to Please Hold 👋</h2>
+    <p class="muted small" style="margin:0">Set up your profile once. It follows your invite link to any device.</p>
+    <label for="p-name">Your name</label>
+    <input id="p-name" placeholder="e.g. Maria" maxlength="80">
+    <label for="p-sells">What do you sell?</label>
+    <textarea id="p-sells" rows="5" placeholder="What you offer, who you sell to, and rough pricing. e.g. &quot;I do photo and short-form video for local restaurants and shops. Monthly packages, around a few hundred a month.&quot;"></textarea>
+    <div class="small muted" style="margin-top:4px">The coach uses this to judge whether your pitch fits what each owner needs.</div>
+    <label for="p-city">Your city / area (optional, makes the owners local)</label>
+    <input id="p-city" placeholder="e.g. San Antonio, TX" maxlength="120">
+    <div class="small" id="p-err" style="margin-top:10px;color:#fca5a5"></div>
+    <div class="row" style="margin-top:18px"><button class="btn primary" id="p-save">Save and start practicing</button></div>
   </div>
 </div>
 
@@ -410,21 +422,93 @@ function addUsage(track, model, u, role) {
   }
 }
 
-// Set this to your Cloudflare Worker URL (see cloudflare/worker.js) so invited people only need an invite code.
-// Anyone who pastes their own API key in Settings still goes straight to Anthropic.
-const PROXY_URL = '';
-const usingProxy = () => !!PROXY_URL && !settings.apiKey;
+// Invited people go through this site's own server (/api) with their invite code, and their
+// profile and calls live there. Anyone who pastes their own API key instead goes straight to
+// Anthropic, and their history stays in this browser.
+const usingProxy = () => !!settings.inviteCode && !settings.apiKey;
 
-// Invite links look like …/please-hold/#invite=CODE. Save the code, then drop it from the address bar.
-(() => {
+// Invite links look like …/#invite=CODE. Save the code, then drop it from the address bar.
+function takeInviteFromUrl() {
   const m = location.hash.match(/invite=([\w-]+)/);
-  if (!m) return;
-  settings.inviteCode = m[1];
+  if (!m) return false;
+  settings.inviteCode = m[1].toLowerCase();
   LS.set('ph_settings', settings);
   try { window.history.replaceState(null, '', location.pathname + location.search); } catch {}
-})();
-let history = LS.get('ph_history', []);
-const saveHistory = () => { if (!LS.set('ph_history', history)) showError("Couldn't save to localStorage (storage full or blocked)."); };
+  return true;
+}
+takeInviteFromUrl();
+// An invite link opened while the app is already open only changes the hash, so pick it up here too.
+window.addEventListener('hashchange', () => { if (takeInviteFromUrl() && !call) init(); });
+let history = usingProxy() ? [] : LS.get('ph_history', []);
+const saveHistory = () => { if (!usingProxy() && !LS.set('ph_history', history)) showError("Couldn't save to localStorage (storage full or blocked)."); };
+
+/* ---------- profile (invited people) ---------- */
+let profile = null;
+const PREF_KEYS = ['preset', 'ownerModel', 'personaModel', 'coachModel', 'ownerEffort', 'coachEffort', 'cache', 'voiceOn', 'rate'];
+const pickPrefs = o => Object.fromEntries(PREF_KEYS.filter(k => o && k in o).map(k => [k, o[k]]));
+
+async function api(path, opts = {}) {
+  let res, data;
+  try {
+    res = await fetch(path, { ...opts, headers: { 'content-type': 'application/json', 'x-invite-code': settings.inviteCode, ...(opts.headers || {}) } });
+  } catch { throw new FriendlyError("Couldn't reach the practice server. Check your internet connection."); }
+  try { data = await res.json(); } catch { data = {}; }
+  if (!res.ok) throw new FriendlyError(friendlyApiError(res.status, data?.error?.message || '', '', true, data?.error?.type));
+  return data;
+}
+
+// Calls listed from the server carry only their summary; the full scorecard loads when opened.
+function fromServerCall(c) {
+  const s = c.summary || {};
+  return {
+    id: c.id, remote: true, date: new Date(c.ts).toISOString(), mode: c.mode, difficulty: c.difficulty,
+    objection: s.objection, overall: c.overall, durationSecs: s.durationSecs, setup: s.setup,
+    grade: { asked_for_sale: c.asked_for_sale }, persona: { name: s.personaName, card_summary: s.card || '' },
+  };
+}
+
+async function loadProfile() {
+  const d = await api('/api/me');
+  profile = d.profile;
+  settings = { ...settings, ...pickPrefs(profile.prefs) };
+  if (profile.name) settings.myName = profile.name;
+  if (profile.sells) settings.pitch = profile.sells;
+  settings.city = profile.city || '';
+  history = d.calls.map(fromServerCall);
+}
+
+async function saveProfile() {
+  await api('/api/me', { method: 'PUT', body: JSON.stringify({ name: settings.myName, sells: settings.pitch, city: settings.city, prefs: pickPrefs(settings) }) });
+  profile = { ...profile, name: settings.myName, sells: settings.pitch, city: settings.city };
+}
+
+async function saveCallRemote(entry) {
+  const { cost, models, transcript, ...detail } = entry;
+  try {
+    const { id } = await api('/api/calls', {
+      method: 'POST',
+      body: JSON.stringify({
+        mode: entry.mode, difficulty: entry.difficulty, overall: entry.overall, asked_for_sale: !!entry.grade.asked_for_sale,
+        summary: { objection: entry.objection, durationSecs: entry.durationSecs, setup: entry.setup, card: entry.persona.card_summary, personaName: entry.persona.name },
+        detail,
+      }),
+    });
+    entry.id = id; entry.remote = true;
+  } catch (e) {
+    showError("Couldn't save this call to your profile: " + e.message);
+  }
+}
+
+async function openEntry(e) {
+  if (e.remote && !e.turns) {
+    show('score');
+    $('view-score').innerHTML = '<div class="card loading"><div class="spinner"></div><div>Loading call…</div></div>';
+    try { Object.assign(e, await api('/api/calls?id=' + encodeURIComponent(e.id)), { id: e.id, remote: true }); }
+    catch (err) { show('history'); showError(err.message); return; }
+  }
+  show('score');
+  renderScorecard(e);
+}
 
 /* ---------- reference data ---------- */
 const INDUSTRIES = ['family restaurant', 'auto repair shop', 'clothing boutique', 'independent gym', 'hair salon', 'barbershop', 'dental office', 'small law firm', 'coffee shop', 'craft brewery', 'home services (plumbing, HVAC, or landscaping)', 'bakery', 'yoga or pilates studio', 'florist', 'tattoo studio', 'pet grooming salon', 'food truck', 'chiropractic clinic', 'furniture store', 'real estate brokerage'];
@@ -523,7 +607,7 @@ async function callClaude({ model, system, messages, maxTokens = 2000, effort, s
 
     let res, data;
     try {
-      res = await fetch(viaProxy ? PROXY_URL.replace(/\/$/, '') + '/v1/messages' : 'https://api.anthropic.com/v1/messages', { method: 'POST', headers, body: JSON.stringify(body) });
+      res = await fetch(viaProxy ? '/api/claude' : 'https://api.anthropic.com/v1/messages', { method: 'POST', headers, body: JSON.stringify(body) });
     } catch {
       throw new FriendlyError(`Couldn't reach ${viaProxy ? 'the practice server' : 'api.anthropic.com'}. Check your internet connection and try again.`);
     }
@@ -1220,7 +1304,7 @@ async function endCall() {
   };
   const wasLocked = !brutalUnlocked();
   history.unshift(entry);
-  saveHistory();
+  if (usingProxy()) saveCallRemote(entry); else saveHistory();
   call = null;
   renderScorecard(entry, wasLocked && brutalUnlocked());
 }
@@ -1307,6 +1391,8 @@ function trendSVG(entries) {
 }
 
 function renderHome() {
+  $('home-hello').classList.toggle('hidden', !profile?.name);
+  $('home-hello').textContent = profile?.name ? `Hi ${profile.name.split(' ')[0]} — ready for a rep?` : '';
   const n = history.length;
   const last5 = history.slice(0, 5);
   const avg = last5.length ? (last5.reduce((a, e) => a + e.overall, 0) / last5.length).toFixed(1) : '—';
@@ -1328,7 +1414,7 @@ function renderHistory() {
       <span class="hide-sm"><span class="pill">${esc(e.mode)} · ${esc(e.difficulty)}</span> ${e.grade.asked_for_sale ? '<span class="pill green">asked</span>' : '<span class="pill red">no ask</span>'}</span>
       <b style="text-align:right;color:${scoreColor(e.overall)}">${e.overall.toFixed(1)}</b>
     </div>`).join('') : '<p class="muted" style="padding:0 16px 16px">No calls yet.</p>';
-  document.querySelectorAll('.hist-row').forEach(r => r.onclick = () => { const e = history[+r.dataset.i]; show('score'); renderScorecard(e); });
+  document.querySelectorAll('.hist-row').forEach(r => r.onclick = () => openEntry(history[+r.dataset.i]));
 }
 
 /* ---------- setup ---------- */
@@ -1371,9 +1457,7 @@ $('btn-history').onclick = () => { if (currentView === 'call' && call && !call.e
 /* ---------- settings ---------- */
 function openSettings() {
   $('s-key').value = settings.apiKey;
-  $('s-invite-wrap').classList.toggle('hidden', !PROXY_URL);
   $('s-invite').value = settings.inviteCode || '';
-  $('s-key-label').textContent = PROXY_URL ? 'Your own Anthropic API key (optional)' : 'Anthropic API key';
   draftPreset = settings.preset;
   ['owner', 'persona', 'coach'].forEach(r => { $(`s-${r}-model`).value = roleModel(r); });
   $('s-owner-effort').value = settings.ownerEffort;
@@ -1410,7 +1494,8 @@ $('s-cancel').onclick = closeSettings;
 $('settings-modal').onclick = e => { if (e.target.id === 'settings-modal') closeSettings(); };
 $('s-key-show').onclick = () => { const k = $('s-key'); k.type = k.type === 'password' ? 'text' : 'password'; $('s-key-show').textContent = k.type === 'password' ? 'Show' : 'Hide'; };
 $('s-rate').oninput = () => { $('s-rate-v').textContent = `(${(+$('s-rate').value).toFixed(2)}×)`; };
-$('s-save').onclick = () => {
+$('s-save').onclick = async () => {
+  const prevCode = settings.inviteCode, prevKey = settings.apiKey;
   settings = {
     ...settings,
     apiKey: $('s-key').value.trim(),
@@ -1431,7 +1516,11 @@ $('s-save').onclick = () => {
   };
   if (!LS.set('ph_settings', settings)) showError("Couldn't save settings — localStorage is blocked in this browser.");
   closeSettings();
+  if (settings.inviteCode !== prevCode || settings.apiKey !== prevKey) { init(); return; }
   renderEnv();
+  if (usingProxy() && profile) {
+    try { await saveProfile(); } catch (e) { showError("Couldn't save your profile: " + e.message); }
+  }
 };
 $('s-test-voice').onclick = () => {
   const prev = settings;
@@ -1439,9 +1528,32 @@ $('s-test-voice').onclick = () => {
   speak('Hello, this is the shop, how can I help you?', { name: 'Test', voice_gender: 'female', voice_pitch: 1, voice_rate: 1 });
   settings = prev;
 };
-$('s-clear').onclick = () => {
+$('s-clear').onclick = async () => {
   if (!confirm('Delete all saved calls and scores? This cannot be undone.')) return;
+  if (usingProxy()) {
+    try { await api('/api/calls?all=1', { method: 'DELETE' }); } catch (e) { showError(e.message); return; }
+  }
   history = []; saveHistory(); closeSettings(); show('home');
+};
+
+/* ---------- first-visit profile setup ---------- */
+function openProfileSetup() {
+  $('p-name').value = settings.myName || '';
+  $('p-sells').value = profile?.sells || '';
+  $('p-city').value = settings.city || '';
+  $('p-err').textContent = '';
+  $('profile-modal').classList.remove('hidden');
+  $('p-name').focus();
+}
+$('p-save').onclick = async () => {
+  const name = $('p-name').value.trim(), sells = $('p-sells').value.trim();
+  if (!name || !sells) { $('p-err').textContent = 'Add your name and what you sell so the coach can judge your pitch.'; return; }
+  settings = { ...settings, myName: name, pitch: sells, city: $('p-city').value.trim() };
+  LS.set('ph_settings', settings);
+  $('p-save').disabled = true;
+  try { await saveProfile(); $('profile-modal').classList.add('hidden'); show('home'); }
+  catch (e) { $('p-err').textContent = e.message; }
+  $('p-save').disabled = false;
 };
 
 /* ---------- environment checks ---------- */
@@ -1449,8 +1561,7 @@ function renderEnv() {
   const msgs = [];
   if (!window.isSecureContext) msgs.push('This page isn\'t in a secure context, so the microphone won\'t work. Serve it from localhost: run <code>python3 -m http.server 8777</code> in this folder and open <a href="http://localhost:8777">http://localhost:8777</a>.');
   if (!SR) msgs.push('This browser doesn\'t support speech recognition. Use Chrome or Edge for voice — you can still type your lines.');
-  if (usingProxy() && !settings.inviteCode) msgs.push('Enter your invite code in <a href="#" id="env-open-settings">Settings</a> to start practicing.');
-  else if (!PROXY_URL && !settings.apiKey) msgs.push('Add your Anthropic API key in <a href="#" id="env-open-settings">Settings</a> to start practicing.');
+  if (!settings.inviteCode && !settings.apiKey) msgs.push('Please Hold is invite-only. Open the invite link you were sent, or enter your invite code in <a href="#" id="env-open-settings">Settings</a>.');
   $('env-banner').innerHTML = msgs.map(m => `<div class="banner warn">${m}</div>`).join('');
   const link = $('env-open-settings');
   if (link) link.onclick = e => { e.preventDefault(); openSettings(); };
@@ -1458,8 +1569,21 @@ function renderEnv() {
 
 window.addEventListener('beforeunload', e => { if (call && !call.ended && call.turns.length) { e.preventDefault(); e.returnValue = ''; } });
 
-renderEnv();
-show('home');
+async function init() {
+  profile = null;
+  history = usingProxy() ? [] : LS.get('ph_history', []);
+  renderEnv();
+  show('home');
+  if (!usingProxy()) return;
+  try {
+    await loadProfile();
+    show('home');
+    if (!profile.name || !profile.sells) openProfileSetup();
+  } catch (e) {
+    showError(e.message);
+  }
+}
+init();
 </script>
 </body>
 </html>

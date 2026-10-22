@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Please Hold · Admin</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0a0d12; --panel: #11161e; --panel-2: #161d27; --border: #212b38;
+    --text: #e7edf3; --muted: #8a97a6; --dim: #5d6a79; --grid: #1c2430;
+    --green: #22c55e; --red: #ef4444;
+    --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif; }
+  button, input { font: inherit; color: inherit; }
+  input { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; }
+  .btn { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 14px; font-weight: 600; cursor: pointer; }
+  .btn.primary { background: var(--green); border-color: var(--green); color: #04130a; }
+  .btn.small { padding: 4px 10px; font-size: 13px; font-weight: 500; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 20px 16px 60px; }
+  header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+  h1 { font-size: 20px; margin: 0; display: flex; gap: 10px; align-items: center; }
+  h1 i { width: 10px; height: 10px; border-radius: 50%; background: var(--green); display: inline-block; }
+  h2 { font-size: 16px; margin: 0 0 12px; }
+  a { color: #60a5fa; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .seg button { background: var(--panel-2); color: var(--muted); border: 0; padding: 7px 14px; cursor: pointer; }
+  .seg button.on { background: #14532d; color: var(--text); }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-top: 14px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; }
+  .kpi { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+  .kpi .v { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .kpi .k { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .legend { display: flex; gap: 16px; font-size: 13px; color: var(--muted); margin-bottom: 8px; flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend b { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .chart { position: relative; }
+  .chart svg { display: block; width: 100%; height: auto; }
+  .tip { position: absolute; pointer-events: none; background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; font-size: 13px; min-width: 150px; box-shadow: 0 6px 20px rgba(0,0,0,.4); display: none; }
+  .tip .t { font-weight: 600; margin-bottom: 4px; }
+  .tip .r { display: flex; justify-content: space-between; gap: 14px; color: var(--muted); }
+  .tip .r b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; padding: 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 9px 8px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; vertical-align: middle; }
+  td.num, th.num { text-align: right; }
+  td:first-child { white-space: nowrap; }
+  tr.revoked td { opacity: .45; }
+  .muted { color: var(--muted); }
+  .small { font-size: 13px; }
+  .scroll { overflow-x: auto; }
+  details summary { cursor: pointer; color: var(--muted); font-size: 13px; margin-top: 10px; }
+  .empty { color: var(--muted); padding: 30px 0; text-align: center; }
+  .login { max-width: 380px; margin: 12vh auto 0; }
+  .err { color: #fca5a5; font-size: 14px; margin-top: 10px; }
+  .newlink { margin-top: 12px; padding: 12px; border: 1px solid #1c5c33; background: #0b2615; border-radius: 10px; font-size: 14px; word-break: break-all; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="login" class="card login hidden">
+    <h2>Please Hold admin</h2>
+    <form id="login-form">
+      <input id="pw" type="password" placeholder="Admin password" autocomplete="current-password" style="width:100%">
+      <button class="btn primary" style="width:100%;margin-top:10px">Sign in</button>
+      <div class="err" id="login-err"></div>
+    </form>
+  </div>
+
+  <div id="main" class="hidden">
+    <header>
+      <h1><i></i>Please Hold · Admin</h1>
+      <div class="row">
+        <div class="seg" id="range"><button data-d="7">7 days</button><button data-d="30" class="on">30 days</button><button data-d="90">90 days</button></div>
+        <a href="https://console.anthropic.com/settings/billing" target="_blank" rel="noopener">Credits &amp; billing →</a>
+        <button class="btn small" id="signout">Sign out</button>
+      </div>
+    </header>
+    <div class="kpis" id="kpis"></div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <h2 style="margin:0">People</h2>
+        <form class="row" id="invite-form">
+          <input id="invite-label" placeholder="Name for a new invite, e.g. Maria" maxlength="60" style="width:260px">
+          <button class="btn primary">Create invite</button>
+        </form>
+      </div>
+      <div id="invite-result"></div>
+      <div class="scroll" id="people" style="margin-top:10px"></div>
+      <p class="small muted" style="margin:10px 0 0">Scores only. Transcripts and coaching feedback stay private to each person.</p>
+    </div>
+
+    <div class="card">
+      <h2>Spend per day</h2>
+      <div class="legend"><span><b style="background:var(--series-1)"></b>Owner replies</span><span><b style="background:var(--series-2)"></b>Persona builder</span><span><b style="background:var(--series-3)"></b>Coach</span></div>
+      <div class="chart" id="chart"></div>
+      <details><summary>Show as table</summary><div class="scroll" id="daily-table"></div></details>
+    </div>
+
+    <div class="card">
+      <h2>Models</h2>
+      <div class="scroll" id="models"></div>
+    </div>
+    <p class="small muted">Spend is estimated from token counts and list prices; your Anthropic invoice is the source of truth. Days are in UTC. Calls made with someone's own API key don't go through this server and aren't counted.</p>
+  </div>
+</div>
+<script>
+'use strict';
+const ROLES = [['owner', 'Owner replies', 'var(--series-1)'], ['persona', 'Persona builder', 'var(--series-2)'], ['coach', 'Coach', 'var(--series-3)']];
+let days = 30, lastSeries = null, lastData = null;
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const money = v => { v = v || 0; if (v === 0) return '$0'; if (v < 0.01) return '<$0.01'; return '$' + v.toFixed(2); };
+const num = v => (v || 0).toLocaleString();
+const dayLabel = d => { const [y, m, dd] = d.split('-'); return new Date(Date.UTC(+y, +m - 1, +dd)).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' }); };
+function ago(ts) {
+  if (!ts) return '—';
+  const m = Math.round((Date.now() - ts) / 60000);
+  if (m < 1) return 'just now'; if (m < 60) return m + 'm ago';
+  const h = Math.round(m / 60); if (h < 48) return h + 'h ago';
+  return Math.round(h / 24) + 'd ago';
+}
+const inviteLink = code => location.origin + '/#invite=' + encodeURIComponent(code);
+
+/* ---------- auth ---------- */
+const getPw = () => { try { return sessionStorage.getItem('ph_admin') || ''; } catch { return ''; } };
+const setPw = v => { try { v ? sessionStorage.setItem('ph_admin', v) : sessionStorage.removeItem('ph_admin'); } catch {} };
+async function api(path, opts = {}) {
+  const res = await fetch(path, { ...opts, headers: { 'content-type': 'application/json', authorization: 'Bearer ' + getPw(), ...(opts.headers || {}) } });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401) { setPw(''); showLogin('Wrong password.'); throw new Error('unauthorized'); }
+  if (!res.ok) throw new Error(data?.error?.message || ('Error ' + res.status));
+  return data;
+}
+function showLogin(msg) { $('main').classList.add('hidden'); $('login').classList.remove('hidden'); $('login-err').textContent = msg || ''; $('pw').focus(); }
+$('login-form').onsubmit = e => { e.preventDefault(); setPw($('pw').value); $('login').classList.add('hidden'); load(); };
+$('signout').onclick = () => { setPw(''); showLogin(''); };
+
+/* ---------- data ---------- */
+async function load() {
+  if (!getPw()) return showLogin('');
+  let d;
+  try { d = await api('/api/admin/data?days=' + days); }
+  catch (e) { if (e.message !== 'unauthorized') { $('main').classList.remove('hidden'); $('kpis').innerHTML = '<div class="card empty">Couldn\'t load: ' + esc(e.message) + '</div>'; } return; }
+  $('main').classList.remove('hidden');
+  lastData = d;
+  render(d);
+}
+
+function render(d) {
+  const usage = Object.fromEntries(d.usageByPerson.map(r => [r.person_id, r]));
+  const todayU = Object.fromEntries(d.todayByPerson.map(r => [r.person_id, r]));
+  const calls = d.people.reduce((a, p) => a + p.calls, 0);
+  const active = d.people.filter(p => usage[p.id]?.requests).length;
+  const t = d.totals;
+  $('kpis').innerHTML = [['Today', money(t.today)], ['Last 7 days', money(t.d7)], ['Last 30 days', money(t.d30)],
+    ['Calls · ' + d.days + 'd', num(calls)], ['People active · ' + d.days + 'd', active + ' / ' + d.people.filter(p => !p.revoked).length]]
+    .map(([k, v]) => `<div class="kpi"><div class="v">${v}</div><div class="k">${esc(k)}</div></div>`).join('');
+
+  $('people').innerHTML = d.people.length ? `<table><thead><tr>
+      <th>Person</th><th class="num">Calls</th><th class="num">Avg score</th><th>Recent scores</th><th class="num">Asked for sale</th>
+      <th class="num">Spend · ${d.days}d</th><th class="num">Today vs limit</th><th>Last active</th><th></th></tr></thead><tbody>` +
+    d.people.slice().reverse().map(p => {
+      const u = usage[p.id] || {}, td = todayU[p.id] || {};
+      const who = p.name ? `${esc(p.name)} <span class="muted small">(${esc(p.label)})</span>` : `${esc(p.label)} <span class="muted small">not set up yet</span>`;
+      return `<tr class="${p.revoked ? 'revoked' : ''}">
+        <td>${who}</td>
+        <td class="num">${num(p.calls)}</td>
+        <td class="num">${p.avg_score != null ? p.avg_score.toFixed(1) : '—'}</td>
+        <td>${spark(p.recent || [])}</td>
+        <td class="num">${p.calls ? Math.round(p.ask_rate * 100) + '%' : '—'}</td>
+        <td class="num">${money(u.cost)}</td>
+        <td class="num">${num(td.requests)} / ${num(d.dailyLimit)}</td>
+        <td class="muted">${ago(p.last_seen)}${u.errors ? ` · ${u.errors} errors` : ''}</td>
+        <td style="white-space:nowrap"><button class="btn small" data-copy="${esc(p.code)}">Copy link</button>
+          <button class="btn small" data-revoke="${esc(p.id)}" data-to="${p.revoked ? '0' : '1'}">${p.revoked ? 'Restore' : 'Revoke'}</button></td>
+      </tr>`;
+    }).join('') + '</tbody></table>' : '<div class="empty">No invites yet. Create one above, then send the link.</div>';
+  document.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => copy(inviteLink(b.dataset.copy), b));
+  document.querySelectorAll('[data-revoke]').forEach(b => b.onclick = async () => {
+    const revoking = b.dataset.to === '1';
+    if (revoking && !confirm('Turn off this invite? They lose access until you restore it. Their profile and calls are kept.')) return;
+    await api('/api/admin/invites', { method: 'PATCH', body: JSON.stringify({ id: b.dataset.revoke, revoked: revoking }) });
+    load();
+  });
+
+  const byDay = {};
+  d.daily.forEach(r => { (byDay[r.day] = byDay[r.day] || {})[r.role] = (byDay[r.day]?.[r.role] || 0) + (r.cost || 0); });
+  const series = [];
+  for (let i = d.days - 1; i >= 0; i--) {
+    const key = new Date(Date.now() - i * 864e5).toISOString().slice(0, 10);
+    const v = byDay[key] || {};
+    const other = Object.keys(v).filter(k => !['owner', 'persona', 'coach'].includes(k)).reduce((a, k) => a + v[k], 0);
+    series.push({ day: key, owner: v.owner || 0, persona: v.persona || 0, coach: (v.coach || 0) + other });
+  }
+  lastSeries = series;
+  drawChart(series);
+  $('daily-table').innerHTML = '<table><thead><tr><th>Day</th>' + ROLES.map(r => `<th class="num">${r[1]}</th>`).join('') + '<th class="num">Total</th></tr></thead><tbody>' +
+    series.slice().reverse().map(s => `<tr><td>${dayLabel(s.day)}</td>${ROLES.map(r => `<td class="num">${money(s[r[0]])}</td>`).join('')}<td class="num">${money(s.owner + s.persona + s.coach)}</td></tr>`).join('') + '</tbody></table>';
+
+  $('models').innerHTML = d.models.length ? '<table><thead><tr><th>Model</th><th class="num">Requests</th><th class="num">Input tokens</th><th class="num">From cache</th><th class="num">Output tokens</th><th class="num">Spend</th></tr></thead><tbody>' +
+    d.models.map(m => `<tr><td>${esc(m.model)}</td><td class="num">${num(m.requests)}</td><td class="num">${num(m.input)}</td><td class="num">${m.input ? Math.round(m.cache_read / m.input * 100) : 0}%</td><td class="num">${num(m.output)}</td><td class="num">${money(m.cost)}</td></tr>`).join('') +
+    '</tbody></table>' : '<div class="empty">No requests in this range.</div>';
+}
+
+function spark(vals) {
+  if (vals.length < 2) return vals.length ? `<span class="small">${vals[0].toFixed(1)}</span>` : '<span class="muted">—</span>';
+  const W = 90, H = 24, x = i => 2 + i * (W - 4) / (vals.length - 1), y = v => H - 3 - v / 10 * (H - 6);
+  const pts = vals.map((v, i) => x(i).toFixed(1) + ',' + y(v).toFixed(1)).join(' ');
+  const last = vals[vals.length - 1];
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-label="Recent scores: ${vals.map(v => v.toFixed(1)).join(', ')}"><polyline points="${pts}" fill="none" stroke="var(--series-1)" stroke-width="2" stroke-linejoin="round"/><circle cx="${x(vals.length - 1)}" cy="${y(last)}" r="3" fill="var(--series-1)"/><title>${vals.map(v => v.toFixed(1)).join(' → ')}</title></svg>`;
+}
+
+function copy(text, btn) {
+  const done = () => { const o = btn.textContent; btn.textContent = 'Copied'; setTimeout(() => { btn.textContent = o; }, 1500); };
+  (navigator.clipboard?.writeText(text) || Promise.reject()).then(done).catch(() => prompt('Copy this invite link:', text));
+}
+
+$('invite-form').onsubmit = async e => {
+  e.preventDefault();
+  const label = $('invite-label').value.trim();
+  if (!label) return;
+  try {
+    const p = await api('/api/admin/invites', { method: 'POST', body: JSON.stringify({ label }) });
+    $('invite-label').value = '';
+    $('invite-result').innerHTML = `<div class="newlink">Invite for <b>${esc(p.label)}</b> is ready. Send them this link:<br><a href="${esc(inviteLink(p.code))}">${esc(inviteLink(p.code))}</a> <button class="btn small" id="copy-new">Copy</button></div>`;
+    $('copy-new').onclick = () => copy(inviteLink(p.code), $('copy-new'));
+    load();
+  } catch (err) { if (err.message !== 'unauthorized') $('invite-result').innerHTML = `<div class="err">${esc(err.message)}</div>`; }
+};
+
+function niceMax(v) {
+  if (v <= 0) return 0.1;
+  const p = Math.pow(10, Math.floor(Math.log10(v)));
+  for (const s of [1, 2, 2.5, 5, 10]) if (s * p >= v) return s * p;
+  return 10 * p;
+}
+
+function drawChart(series) {
+  const total = series.reduce((a, s) => a + s.owner + s.persona + s.coach, 0);
+  if (total === 0) { $('chart').innerHTML = '<div class="empty">No usage in this range yet.</div>'; return; }
+  const W = Math.max(320, $('chart').clientWidth || 1000), H = 260, L = 52, R = 8, T = 10, B = 28;
+  const iw = W - L - R, ih = H - T - B;
+  const top = niceMax(Math.max(...series.map(s => s.owner + s.persona + s.coach)));
+  const y = v => T + ih - v / top * ih;
+  const slot = iw / series.length, bw = Math.max(2, Math.min(28, slot - 2));
+  let svg = '';
+  for (let g = 0; g <= 4; g++) {
+    const gv = top * g / 4, gy = y(gv);
+    svg += `<line x1="${L}" x2="${W - R}" y1="${gy}" y2="${gy}" stroke="var(--grid)"/><text x="${L - 8}" y="${gy + 4}" fill="var(--dim)" font-size="11" text-anchor="end">${money(gv)}</text>`;
+  }
+  const every = Math.ceil(series.length / 8);
+  series.forEach((s, i) => {
+    const x = L + i * slot + (slot - bw) / 2;
+    let base = 0; const segs = [];
+    ROLES.forEach(r => { const v = s[r[0]]; if (v > 0) { segs.push([base, base + v, r[2]]); base += v; } });
+    segs.forEach((sg, j) => {
+      const gap = j > 0 ? 2 : 0; // 2px surface gap between stacked segments
+      const h = Math.max(0.5, y(sg[0]) - y(sg[1]) - gap);
+      const yTop = y(sg[0]) - gap - h;
+      if (j === segs.length - 1 && h > 4) {
+        const r = Math.min(4, bw / 2);
+        svg += `<path d="M${x},${yTop + h}V${yTop + r}Q${x},${yTop} ${x + r},${yTop}H${x + bw - r}Q${x + bw},${yTop} ${x + bw},${yTop + r}V${yTop + h}Z" fill="${sg[2]}"/>`;
+      } else svg += `<rect x="${x}" y="${yTop}" width="${bw}" height="${h}" fill="${sg[2]}"/>`;
+    });
+    if ((series.length - 1 - i) % every === 0) svg += `<text x="${x + bw / 2}" y="${H - 8}" fill="var(--dim)" font-size="11" text-anchor="middle">${dayLabel(s.day)}</text>`;
+    svg += `<rect class="hit" data-i="${i}" x="${L + i * slot}" y="${T}" width="${slot}" height="${ih}" fill="transparent"/>`;
+  });
+  svg += `<line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--border)"/>`;
+  $('chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Spend per day, stacked by owner replies, persona builder and coach">${svg}</svg><div class="tip" id="tip"></div>`;
+  const tip = $('tip'), box = $('chart');
+  box.querySelectorAll('.hit').forEach(el => {
+    el.addEventListener('mousemove', ev => {
+      const s = series[+el.dataset.i];
+      tip.innerHTML = `<div class="t">${dayLabel(s.day)} · ${money(s.owner + s.persona + s.coach)}</div>` +
+        ROLES.slice().reverse().map(r => `<div class="r"><span><b style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${r[2]};margin-right:6px"></b>${r[1]}</span><b>${money(s[r[0]])}</b></div>`).join('');
+      tip.style.display = 'block';
+      const rect = box.getBoundingClientRect();
+      let left = ev.clientX - rect.left + 14;
+      if (left + tip.offsetWidth > rect.width) left = ev.clientX - rect.left - tip.offsetWidth - 14;
+      tip.style.left = left + 'px';
+      tip.style.top = Math.max(0, ev.clientY - rect.top - tip.offsetHeight - 10) + 'px';
+    });
+    el.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+  });
+}
+
+document.querySelectorAll('#range button').forEach(b => b.onclick = () => {
+  days = +b.dataset.d;
+  document.querySelectorAll('#range button').forEach(x => x.classList.toggle('on', x === b));
+  load();
+});
+window.addEventListener('resize', () => { if (lastSeries) drawChart(lastSeries); });
+load();
+</script>
+</body>
+</html>

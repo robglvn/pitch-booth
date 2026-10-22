@@ -1,0 +1,9 @@
+{
+  "name": "please-hold",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.2.0"
+  }
+}
