@@ -470,7 +470,7 @@
     <label class="row small" style="color:var(--text);margin-top:18px"><input type="checkbox" id="s-voice-on" style="width:auto"> Read the other person's replies out loud</label>
     <details id="s-more" style="margin-top:16px">
     <summary>More options</summary>
-    <label for="s-voice">Voice</label>
+    <label for="s-voice">Browser voice <span style="color:var(--dim)">(used when studio voices aren't set up)</span></label>
     <select id="s-voice"></select>
     <label for="s-rate">Speaking speed <span id="s-rate-v"></span></label>
     <input id="s-rate" type="range" min="0.7" max="1.4" step="0.05" style="padding:0">
@@ -952,26 +952,83 @@ function loadVoices() {
 }
 if ('speechSynthesis' in window) { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
 
-function voiceFor(p) {
-  if (settings.voiceName) { const v = voices.find(v => v.name === settings.voiceName); if (v) return v; }
+// Browser voices vary a lot by device; natural/neural ones (Edge's "Online (Natural)", macOS Premium) sound far better.
+const voiceQuality = v => (/natural|neural|premium|enhanced/i.test(v.name) ? 2 : /google|online/i.test(v.name) ? 1 : 0);
+function voiceFor(p, s = settings) {
+  if (s.voiceName) { const v = voices.find(v => v.name === s.voiceName); if (v) return v; }
   if (!voices.length) return null;
   const female = voices.filter(v => FEMALE.test(v.name));
   const male = voices.filter(v => !FEMALE.test(v.name) && MALE.test(v.name));
   let pool = p.voice_gender === 'female' ? female : male;
   if (!pool.length) pool = voices;
+  const best = Math.max(...pool.map(voiceQuality));
+  pool = pool.filter(v => voiceQuality(v) === best);
   return pool[hash(p.name) % pool.length];
 }
 
-let currentUtterance = null; // kept referenced so Chrome doesn't drop onend
-function speak(text, p) {
+// Studio voices (ElevenLabs via /api/voice) for invited people; the browser's own voice otherwise or if that fails.
+// speechToken drops audio that arrives after the caller has already started talking over it.
+let studioVoice = 'unknown'; // 'off' once the server says studio voices aren't set up
+let currentAudio = null, finishAudio = null, speechToken = 0;
+const isSpeaking = () => ('speechSynthesis' in window && speechSynthesis.speaking) || (!!currentAudio && !currentAudio.paused);
+function stopSpeaking() {
+  speechToken++;
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  if (currentAudio) { currentAudio.pause(); finishAudio?.(); }
+}
+
+async function speak(text, p) {
+  const s = settings;
+  if (!s.voiceOn) return;
+  stopSpeaking();
+  const token = speechToken;
+  if (usingProxy() && studioVoice !== 'off' && p) {
+    try {
+      const res = await fetch('/api/voice', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-invite-code': s.inviteCode },
+        body: JSON.stringify({ text, gender: p.voice_gender, age: p.age, seed: p.name, rate: (p.voice_rate || 1) * (s.rate || 1) }),
+      });
+      if (res.status === 503) studioVoice = 'off';
+      else if (res.ok) {
+        const blob = await res.blob();
+        if (token !== speechToken) return;
+        return await playAudio(blob);
+      }
+    } catch {}
+    if (token !== speechToken) return;
+  }
+  return browserSpeak(text, p, s);
+}
+
+function playAudio(blob) {
   return new Promise(resolve => {
-    if (!settings.voiceOn || !('speechSynthesis' in window)) return resolve();
+    const url = URL.createObjectURL(blob);
+    const a = new Audio(url);
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true; clearTimeout(guard); URL.revokeObjectURL(url);
+      if (currentAudio === a) { currentAudio = null; finishAudio = null; }
+      resolve();
+    };
+    const guard = setTimeout(finish, 60000);
+    a.onended = finish; a.onerror = finish;
+    currentAudio = a; finishAudio = finish;
+    a.play().catch(finish);
+  });
+}
+
+let currentUtterance = null; // kept referenced so Chrome doesn't drop onend
+function browserSpeak(text, p, s) {
+  return new Promise(resolve => {
+    if (!('speechSynthesis' in window)) return resolve();
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    const v = p ? voiceFor(p) : null;
+    const v = p ? voiceFor(p, s) : null;
     if (v) u.voice = v;
     u.pitch = p ? p.voice_pitch : 1;
-    u.rate = (p ? p.voice_rate : 1) * (settings.rate || 1);
+    u.rate = (p ? p.voice_rate : 1) * (s.rate || 1);
     let done = false;
     const finish = () => { if (!done) { done = true; clearTimeout(guard); resolve(); } };
     const guard = setTimeout(finish, 4000 + text.length * 120);
@@ -1179,8 +1236,8 @@ function startTalk() {
   if (!call || call.ended || call.busy || talking || $('ptt').disabled) return;
   if (!SR) { showError("Voice input isn't available in this browser. Use Chrome or Edge — or type your lines in the box below."); return; }
   if (!window.isSecureContext) { showError('The microphone needs a secure page. Open this app at http://localhost (see the comment at the top of the file).'); return; }
-  bargedIn = 'speechSynthesis' in window && speechSynthesis.speaking;
-  if (bargedIn) speechSynthesis.cancel();
+  bargedIn = isSpeaking();
+  if (bargedIn) stopSpeaking();
   hideError();
   talking = true; cutoffHit = false; recFinal = ''; recInterim = ''; talkStart = Date.now(); micBlocked = false;
   setPtt('Listening… release to send', false, true);
@@ -1277,7 +1334,7 @@ window.addEventListener('blur', () => stopTalk());
 function sendTyped() {
   const v = $('type-input').value;
   if (!v.trim() || !call || call.busy) return;
-  if ('speechSynthesis' in window && speechSynthesis.speaking) speechSynthesis.cancel();
+  if (isSpeaking()) stopSpeaking();
   $('type-input').value = '';
   handleCallerUtterance(v, {});
 }
@@ -1363,7 +1420,7 @@ function renderCoach() {
 $('next-rep').onclick = async () => {
   if (!call || call.busy) return;
   if (talking) stopTalk();
-  window.speechSynthesis?.cancel();
+  stopSpeaking();
   if (call.rep >= DRILL_REPS) { endCall(); return; }
   call.rep++;
   if (call.rep === DRILL_REPS) $('next-rep').textContent = 'Finish drill';
@@ -1445,7 +1502,7 @@ async function endCall() {
   if (talking) stopTalk();
   call.ended = true;
   clearInterval(call.timerId);
-  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  stopSpeaking();
   const c = call;
   const callerTurns = c.turns.filter(t => t.who === 'me').length;
   if (!c.persona || callerTurns === 0) { call = null; show('home'); showError('Call ended before you said anything, so there was nothing to score.'); return; }
@@ -1706,7 +1763,7 @@ $('s-save').onclick = async () => {
 $('s-test-voice').onclick = () => {
   const prev = settings;
   settings = { ...settings, voiceOn: true, voiceName: $('s-voice').value, rate: +$('s-rate').value || 1 };
-  speak('Hello, this is the shop, how can I help you?', { name: 'Test', voice_gender: 'female', voice_pitch: 1, voice_rate: 1 });
+  speak('Hello, this is the shop, how can I help you?', { name: 'Test', age: 40, voice_gender: 'female', voice_pitch: 1, voice_rate: 1 });
   settings = prev;
 };
 $('s-clear').onclick = async () => {
