@@ -216,6 +216,8 @@
   .how .n { width: 30px; height: 30px; flex: none; border-radius: 50%; background: var(--panel-solid); color: var(--text); display: grid; place-items: center; font-family: var(--serif); font-size: 17px; box-shadow: var(--shadow), inset 0 0 0 1px var(--border); }
   .code-input { font-size: 24px; text-align: center; letter-spacing: .14em; padding: 15px; border-radius: 16px; }
   .btn.big { width: 100%; padding: 15px; font-size: 16px; margin-top: 14px; }
+  .code-note { background: var(--green-dim); color: #2f6248; border-radius: var(--radius-sm); padding: 12px 14px; font-size: 14px; margin-bottom: 6px; }
+  .code-note b { font-family: "SF Mono", Menlo, Consolas, monospace; font-weight: 600; letter-spacing: .04em; }
   .w-err { color: var(--red); font-size: 14px; margin-top: 10px; min-height: 1em; }
   .hist-row { display: grid; grid-template-columns: 120px 1fr 110px 60px; gap: 12px; align-items: center; padding: 14px 18px; border-top: 1px solid var(--border); cursor: pointer; font-size: 14px; transition: background .15s; }
   .hist-row:hover { background: rgba(255, 255, 255, .7); }
@@ -306,6 +308,7 @@
       <h1>Nice to <em>meet you</em></h1>
       <p class="lead">Two quick things so the coach can help you.</p>
       <div class="card">
+        <div class="code-note hidden" id="p-code-note"></div>
         <label for="p-name" style="margin-top:0">What's your name?</label>
         <input id="p-name" placeholder="e.g. Maria" maxlength="80">
         <label for="p-sells">What do you sell?</label>
@@ -1671,7 +1674,7 @@ $('s-signout').onclick = () => {
 };
 
 /* ---------- welcome: get in, then set up a profile ---------- */
-function showWelcome(step, err = '') {
+function showWelcome(step, err = '', newCode = '') {
   show('welcome');
   $('w-join').classList.toggle('hidden', step !== 'join');
   $('w-about').classList.toggle('hidden', step !== 'about');
@@ -1683,8 +1686,19 @@ function showWelcome(step, err = '') {
     $('p-sells').value = usingProxy() ? (profile?.sells || '') : (settings.pitch === DEFAULT_SETTINGS.pitch ? '' : settings.pitch);
     $('p-city').value = settings.city || '';
     $('p-err').textContent = '';
+    $('p-code-note').classList.toggle('hidden', !newCode);
+    $('p-code-note').innerHTML = newCode ? `Your personal code is <b>${esc(newCode)}</b>. Save it: it's how you sign in on another device.` : '';
     $('p-name').focus();
   }
+}
+
+// Swap what was typed (a personal code or the universal code) for the person's own code, then load them in.
+async function enterWithCode(raw) {
+  const { code, via } = await api('/api/join', { method: 'POST', body: JSON.stringify({ code: raw }) });
+  settings = { ...settings, inviteCode: code, apiKey: '' };
+  await loadProfile();
+  LS.set('ph_settings', settings);
+  if (!profile.name || !profile.sells) showWelcome('about', '', via === 'universal' ? code : ''); else show('home');
 }
 
 async function joinWithCode() {
@@ -1692,12 +1706,8 @@ async function joinWithCode() {
   if (!code) { $('w-err').textContent = 'Type the code from your invite.'; return; }
   $('w-err').textContent = '';
   $('w-go').disabled = true; $('w-go').textContent = 'Checking…';
-  settings = { ...settings, inviteCode: code, apiKey: '' };
-  try {
-    await loadProfile();
-    LS.set('ph_settings', settings);
-    if (!profile.name || !profile.sells) showWelcome('about'); else show('home');
-  } catch (e) {
+  try { await enterWithCode(code); }
+  catch (e) {
     settings = { ...settings, inviteCode: '' };
     $('w-err').textContent = e.message;
   }
@@ -1747,7 +1757,11 @@ async function init() {
     if (!profile.name || !profile.sells) showWelcome('about'); else show('home');
   } catch (e) {
     // A revoked or mistyped code sends you back to the welcome screen instead of a broken home page.
-    if (e.type === 'invalid_invite') { settings = { ...settings, inviteCode: '' }; LS.set('ph_settings', settings); showWelcome('join', e.message); }
+    if (e.type === 'invalid_invite') {
+      // A link carrying the universal code lands here first; joining turns it into a personal code.
+      try { await enterWithCode(settings.inviteCode); return; } catch {}
+      settings = { ...settings, inviteCode: '' }; LS.set('ph_settings', settings); showWelcome('join', e.message);
+    }
     else showError(e.message);
   }
 }

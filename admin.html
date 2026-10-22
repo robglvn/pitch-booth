@@ -58,6 +58,7 @@
   .login { max-width: 380px; margin: 12vh auto 0; }
   .err { color: #fca5a5; font-size: 14px; margin-top: 10px; }
   .newlink { margin-top: 12px; padding: 12px; border: 1px solid #1c5c33; background: #0b2615; border-radius: 10px; font-size: 14px; word-break: break-all; }
+  .newlink.warn { border-color: #5c4410; background: #2a1f07; }
   .hidden { display: none !important; }
 </style>
 </head>
@@ -87,13 +88,30 @@
       <div class="row" style="justify-content:space-between">
         <h2 style="margin:0">People</h2>
         <form class="row" id="invite-form">
-          <input id="invite-label" placeholder="Name for a new invite, e.g. Maria" maxlength="60" style="width:260px">
-          <button class="btn primary">Create invite</button>
+          <input id="invite-label" placeholder="Name, e.g. Maria" maxlength="60" style="width:180px">
+          <input id="invite-email" type="email" placeholder="Email (optional)" maxlength="254" style="width:220px">
+          <button class="btn primary" id="invite-go">Create invite</button>
         </form>
       </div>
+      <div id="email-setup" class="small muted hidden" style="margin-top:10px"></div>
       <div id="invite-result"></div>
       <div class="scroll" id="people" style="margin-top:10px"></div>
       <p class="small muted" style="margin:10px 0 0">Scores only. Transcripts and coaching feedback stay private to each person.</p>
+    </div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <h2 style="margin:0 0 4px">Universal code</h2>
+          <div class="small muted">One shared code for testing. Everyone who types it gets their own profile and personal code.</div>
+        </div>
+        <form class="row" id="uni-form">
+          <label class="row small" style="gap:6px;cursor:pointer"><input type="checkbox" id="uni-on" style="width:auto"> On</label>
+          <input id="uni-code" maxlength="40" spellcheck="false" autocomplete="off" style="width:160px">
+          <button class="btn primary">Save</button>
+        </form>
+      </div>
+      <div class="small" id="uni-status" style="margin-top:8px"></div>
     </div>
 
     <div class="card">
@@ -149,6 +167,7 @@ async function load() {
   try { d = await api('/api/admin/data?days=' + days); }
   catch (e) { if (e.message !== 'unauthorized') { $('main').classList.remove('hidden'); $('kpis').innerHTML = '<div class="card empty">Couldn\'t load: ' + esc(e.message) + '</div>'; } return; }
   $('main').classList.remove('hidden');
+  $('login').classList.add('hidden');
   lastData = d;
   render(d);
 }
@@ -159,6 +178,9 @@ function render(d) {
   const calls = d.people.reduce((a, p) => a + p.calls, 0);
   const active = d.people.filter(p => usage[p.id]?.requests).length;
   const t = d.totals;
+  renderUniversal(d.universal);
+  $('email-setup').classList.toggle('hidden', d.emailReady);
+  $('email-setup').textContent = 'Email isn’t set up yet, so invites can’t be emailed. Add RESEND_API_KEY and INVITE_FROM in Vercel → Settings → Environment Variables, then redeploy.';
   $('kpis').innerHTML = [['Today', money(t.today)], ['Last 7 days', money(t.d7)], ['Last 30 days', money(t.d30)],
     ['Calls · ' + d.days + 'd', num(calls)], ['People active · ' + d.days + 'd', active + ' / ' + d.people.filter(p => !p.revoked).length]]
     .map(([k, v]) => `<div class="kpi"><div class="v">${v}</div><div class="k">${esc(k)}</div></div>`).join('');
@@ -168,9 +190,11 @@ function render(d) {
       <th class="num">Spend · ${d.days}d</th><th class="num">Today vs limit</th><th>Last active</th><th></th></tr></thead><tbody>` +
     d.people.slice().reverse().map(p => {
       const u = usage[p.id] || {}, td = todayU[p.id] || {};
-      const who = p.name ? `${esc(p.name)} <span class="muted small">(${esc(p.label)})</span>` : `${esc(p.label)} <span class="muted small">not set up yet</span>`;
+      const label = p.via === 'universal' ? 'universal code' : p.label;
+      const who = p.name ? `${esc(p.name)} <span class="muted small">(${esc(label)})</span>` : `${esc(p.via === 'universal' ? 'Joined with universal code' : p.label)} <span class="muted small">not set up yet</span>`;
+      const mail = p.email ? `<div class="small muted">${esc(p.email)}${p.emailed_at ? ` · emailed ${ago(p.emailed_at)}` : ''}</div>` : '';
       return `<tr class="${p.revoked ? 'revoked' : ''}">
-        <td>${who}</td>
+        <td>${who}${mail}</td>
         <td class="num">${num(p.calls)}</td>
         <td class="num">${p.avg_score != null ? p.avg_score.toFixed(1) : '—'}</td>
         <td>${spark(p.recent || [])}</td>
@@ -179,6 +203,7 @@ function render(d) {
         <td class="num">${num(td.requests)} / ${num(d.dailyLimit)}</td>
         <td class="muted">${ago(p.last_seen)}${u.errors ? ` · ${u.errors} errors` : ''}</td>
         <td style="white-space:nowrap"><button class="btn small" data-copy="${esc(p.code)}">Copy link</button>
+          ${p.revoked ? '' : `<button class="btn small" data-send="${esc(p.id)}" data-email="${esc(p.email)}" data-label="${esc(p.label)}">${p.emailed_at ? 'Resend' : 'Email'}</button>`}
           <button class="btn small" data-revoke="${esc(p.id)}" data-to="${p.revoked ? '0' : '1'}">${p.revoked ? 'Restore' : 'Revoke'}</button></td>
       </tr>`;
     }).join('') + '</tbody></table>' : '<div class="empty">No invites yet. Create one above, then send the link.</div>';
@@ -188,6 +213,16 @@ function render(d) {
     if (revoking && !confirm('Turn off this invite? They lose access until you restore it. Their profile and calls are kept.')) return;
     await api('/api/admin/invites', { method: 'PATCH', body: JSON.stringify({ id: b.dataset.revoke, revoked: revoking }) });
     load();
+  });
+  document.querySelectorAll('[data-send]').forEach(b => b.onclick = async () => {
+    let email = b.dataset.email;
+    if (!email) {
+      email = (prompt(`Email address for ${b.dataset.label}:`) || '').trim();
+      if (!email) return;
+    }
+    b.disabled = true; b.textContent = 'Sending…';
+    try { showInviteResult(await api('/api/admin/invites', { method: 'PATCH', body: JSON.stringify({ id: b.dataset.send, send: true, email }) })); load(); }
+    catch (err) { if (err.message !== 'unauthorized') $('invite-result').innerHTML = `<div class="err">${esc(err.message)}</div>`; b.disabled = false; b.textContent = 'Email'; }
   });
 
   const byDay = {};
@@ -222,17 +257,43 @@ function copy(text, btn) {
   (navigator.clipboard?.writeText(text) || Promise.reject()).then(done).catch(() => prompt('Copy this invite link:', text));
 }
 
+function renderUniversal(u, note = '') {
+  $('uni-on').checked = u.enabled;
+  if (document.activeElement !== $('uni-code')) $('uni-code').value = u.code;
+  $('uni-status').innerHTML = note || (u.enabled
+    ? `<span style="color:var(--green)">On.</span> Anyone with the code <b>${esc(u.code)}</b> can join. Turn it off when you're done testing.`
+    : '<span class="muted">Off. Only personal invite codes work.</span>');
+}
+$('uni-form').onsubmit = async e => {
+  e.preventDefault();
+  try {
+    const { universal } = await api('/api/admin/settings', { method: 'PATCH', body: JSON.stringify({ universal: { enabled: $('uni-on').checked, code: $('uni-code').value } }) });
+    renderUniversal(universal);
+  } catch (err) { if (err.message !== 'unauthorized') $('uni-status').innerHTML = `<span class="err">${esc(err.message)}</span>`; }
+};
+
+// After creating or emailing an invite: say whether the email went out, and always offer the link as a backup.
+function showInviteResult(p) {
+  const link = `<br><a href="${esc(inviteLink(p.code))}">${esc(inviteLink(p.code))}</a> <button class="btn small" id="copy-new">Copy</button>`;
+  $('invite-result').innerHTML = p.emailed_at
+    ? `<div class="newlink">Invite emailed to <b>${esc(p.email)}</b>. Their link, in case they need it:${link}</div>`
+    : p.email_error
+      ? `<div class="newlink warn">Invite for <b>${esc(p.label)}</b> is saved, but the email didn't send: ${esc(p.email_error)}<br>You can send them this link yourself:${link}</div>`
+      : `<div class="newlink">Invite for <b>${esc(p.label)}</b> is ready. Send them this link:${link}</div>`;
+  $('copy-new').onclick = () => copy(inviteLink(p.code), $('copy-new'));
+}
+$('invite-email').oninput = () => { $('invite-go').textContent = $('invite-email').value.trim() ? 'Send invite' : 'Create invite'; };
 $('invite-form').onsubmit = async e => {
   e.preventDefault();
-  const label = $('invite-label').value.trim();
-  if (!label) return;
+  const label = $('invite-label').value.trim(), email = $('invite-email').value.trim();
+  if (!label) { $('invite-label').focus(); return; }
+  $('invite-go').disabled = true;
   try {
-    const p = await api('/api/admin/invites', { method: 'POST', body: JSON.stringify({ label }) });
-    $('invite-label').value = '';
-    $('invite-result').innerHTML = `<div class="newlink">Invite for <b>${esc(p.label)}</b> is ready. Send them this link:<br><a href="${esc(inviteLink(p.code))}">${esc(inviteLink(p.code))}</a> <button class="btn small" id="copy-new">Copy</button></div>`;
-    $('copy-new').onclick = () => copy(inviteLink(p.code), $('copy-new'));
+    showInviteResult(await api('/api/admin/invites', { method: 'POST', body: JSON.stringify({ label, email }) }));
+    $('invite-label').value = ''; $('invite-email').value = ''; $('invite-go').textContent = 'Create invite';
     load();
   } catch (err) { if (err.message !== 'unauthorized') $('invite-result').innerHTML = `<div class="err">${esc(err.message)}</div>`; }
+  $('invite-go').disabled = false;
 };
 
 function niceMax(v) {
