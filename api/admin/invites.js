@@ -11,7 +11,7 @@ export default handler(['POST', 'PATCH'], async (req, res) => {
     const label = clip(b.label, 60).trim();
     if (!label) throw new HttpError(400, 'Give the invite a name, like "Maria".', 'missing_label');
     for (let attempt = 0; attempt < 5; attempt++) {
-      const code = newInviteCode(label);
+      const code = newInviteCode();
       const rows = await sql`INSERT INTO people (id, code, label) VALUES (${newId()}, ${code}, ${label}) ON CONFLICT (code) DO NOTHING RETURNING id, code, label`;
       if (rows.length) return res.status(200).json(rows[0]);
     }
