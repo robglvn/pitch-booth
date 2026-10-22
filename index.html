@@ -517,7 +517,7 @@ async function callClaude({ model, system, messages, maxTokens = 2000, effort, s
     if (schema) oc.format = { type: 'json_schema', schema };
     if (Object.keys(oc).length) body.output_config = oc;
     const headers = { 'content-type': 'application/json', 'anthropic-version': '2023-06-01' };
-    if (viaProxy) headers['x-invite-code'] = settings.inviteCode;
+    if (viaProxy) { headers['x-invite-code'] = settings.inviteCode; if (role) headers['x-ph-role'] = role; }
     else { headers['x-api-key'] = settings.apiKey; headers['anthropic-dangerous-direct-browser-access'] = 'true'; }
     if (useFallbacks) { body.fallbacks = 'default'; headers['anthropic-beta'] = 'server-side-fallback-2026-07-01'; }
 
