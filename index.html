@@ -1,5 +1,5 @@
 <!--
-  PLEASE HOLD — AI sales-call practice by voice
+  PITCH BOOTH — AI sales-call practice by voice
 
   Hosted on Vercel. People join with an invite link (…/#invite=CODE) made on /admin;
   their profile and calls live in the site's database, and the server holds the API key.
@@ -14,7 +14,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Please Hold</title>
+<title>Pitch Booth</title>
 <style>
   :root {
     --bg: #0a0d12;
@@ -159,7 +159,7 @@
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand" id="brand" style="cursor:pointer"><span class="dot"></span>Please Hold</div>
+    <div class="brand" id="brand" style="cursor:pointer"><span class="dot"></span>Pitch Booth</div>
     <div class="row">
       <button class="icon-btn" id="btn-history">History</button>
       <button class="icon-btn" id="btn-settings">⚙ Settings</button>
@@ -349,7 +349,7 @@
 <!-- FIRST-VISIT PROFILE MODAL -->
 <div class="modal-bg hidden" id="profile-modal">
   <div class="card modal">
-    <h2>Welcome to Please Hold 👋</h2>
+    <h2>Welcome to Pitch Booth 👋</h2>
     <p class="muted small" style="margin:0">Set up your profile once. It follows your invite link to any device.</p>
     <label for="p-name">Your name</label>
     <input id="p-name" placeholder="e.g. Maria" maxlength="80">
@@ -1274,7 +1274,7 @@ async function endCall() {
   if (!c.persona || callerTurns === 0) { call = null; show('home'); showError('Call ended before you said anything, so there was nothing to score.'); return; }
 
   show('score');
-  $('view-score').innerHTML = `<div class="card loading"><div class="spinner"></div><div>Your coach is reviewing the call…</div><div class="small muted">${callerTurns} of your lines · ${fmt(elapsed())}</div></div>`;
+  $('view-score').innerHTML = `<div class="card loading"><div class="spinner"></div><div>Running your Pitch Check…</div><div class="small muted">${callerTurns} of your lines · ${fmt(elapsed())}</div></div>`;
   const durationSecs = Math.round(elapsed());
   let grade;
   try {
@@ -1321,7 +1321,7 @@ function renderScorecard(e, justUnlocked = false) {
     ${justUnlocked ? '<div class="banner warn">🔓 Brutal difficulty unlocked. Owners will interrupt, go cold, and stack objections.</div>' : ''}
     <div class="card">
       <div class="score-head">
-        <div><div class="big" style="color:${scoreColor(e.overall)}">${e.overall.toFixed(1)}</div><div class="small muted">overall / 10</div></div>
+        <div><div class="small muted" style="text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Pitch Check</div><div class="big" style="color:${scoreColor(e.overall)}">${e.overall.toFixed(1)}</div><div class="small muted">overall / 10</div></div>
         <div style="flex:1;min-width:220px">
           <div style="font-weight:700;font-size:17px">${esc(p.card_summary)}</div>
           <div class="small muted">${esc(modeLabel(e))}${e.objection ? ` · “${esc(e.objection)}”` : ''} · ${fmt(e.durationSecs)} · ${new Date(e.date).toLocaleString()}</div>
@@ -1561,7 +1561,7 @@ function renderEnv() {
   const msgs = [];
   if (!window.isSecureContext) msgs.push('This page isn\'t in a secure context, so the microphone won\'t work. Serve it from localhost: run <code>python3 -m http.server 8777</code> in this folder and open <a href="http://localhost:8777">http://localhost:8777</a>.');
   if (!SR) msgs.push('This browser doesn\'t support speech recognition. Use Chrome or Edge for voice — you can still type your lines.');
-  if (!settings.inviteCode && !settings.apiKey) msgs.push('Please Hold is invite-only. Open the invite link you were sent, or enter your invite code in <a href="#" id="env-open-settings">Settings</a>.');
+  if (!settings.inviteCode && !settings.apiKey) msgs.push('Pitch Booth is invite-only. Open the invite link you were sent, or enter your invite code in <a href="#" id="env-open-settings">Settings</a>.');
   $('env-banner').innerHTML = msgs.map(m => `<div class="banner warn">${m}</div>`).join('');
   const link = $('env-open-settings');
   if (link) link.onclick = e => { e.preventDefault(); openSettings(); };
