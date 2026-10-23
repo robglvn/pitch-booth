@@ -249,6 +249,9 @@
   .home-more .btn { padding: 11px 20px; }
   .choices.cats { grid-template-columns: 1fr 1fr; }
   .choices.cats .choice b { font-size: 14px; }
+  .or { display: flex; align-items: center; gap: 12px; margin: 18px 0; color: var(--dim); font-size: 13px; }
+  .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--border-strong); }
+  .linkish { background: none; border: 0; padding: 0; color: var(--green); font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
   .code-note { background: var(--green-dim); color: #2f6248; border-radius: var(--radius-sm); padding: 12px 14px; font-size: 14px; margin-bottom: 6px; }
   .code-note b { font-family: "SF Mono", Menlo, Consolas, monospace; font-weight: 600; letter-spacing: .04em; }
   .w-err { color: var(--red); font-size: 14px; margin-top: 10px; min-height: 1em; }
@@ -321,6 +324,14 @@
         <li><span class="n">2</span>You pitch them, out loud</li>
         <li><span class="n">3</span>You get a score and tips to get better</li>
       </ol>
+      <div class="card hidden" id="w-quick-card">
+        <label for="w-quick" style="margin-top:0">What do you sell? <span style="color:var(--dim)">A sentence is enough</span></label>
+        <textarea id="w-quick" rows="3" maxlength="600" placeholder="e.g. I'm a barber and want more regulars. Or: I sell life insurance to young families."></textarea>
+        <div class="w-err" id="w-quick-err"></div>
+        <button class="btn primary big" id="w-quick-go">⚡ Start a call</button>
+        <p class="small muted" style="margin:14px 0 0;text-align:center">No sign-up. You can add details later.</p>
+      </div>
+      <div class="or hidden" id="w-or"><span>or use an invite code</span></div>
       <div class="card">
         <label for="w-code" style="margin-top:0">Your invite code</label>
         <input id="w-code" class="code-input" placeholder="abc-123" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="40">
@@ -336,6 +347,16 @@
         </div>
         <div class="small muted" style="margin-top:6px">Stored only in this browser and sent only to api.anthropic.com. Your history stays in this browser.</div>
       </details>
+    </div>
+    <div class="welcome hidden" id="w-quick-panel">
+      <h1>What do you <em>sell</em>?</h1>
+      <p class="lead">A sentence or two is enough. You can add details later in Settings.</p>
+      <div class="card">
+        <textarea id="q-quick" rows="4" maxlength="600" aria-label="What you sell" placeholder="e.g. I'm a barber and want more regulars. Or: I sell life insurance to young families."></textarea>
+        <div class="w-err" id="q-quick-err"></div>
+        <button class="btn primary big" id="q-quick-go">⚡ Start a call</button>
+      </div>
+      <p style="text-align:center;margin-top:14px"><button type="button" class="linkish" id="q-quick-back">Answer the full questions instead</button></p>
     </div>
     <div class="welcome hidden" id="w-about">
       <div class="q-top"><span class="small muted" id="q-count"></span><div class="q-progress"><div class="q-bar" id="q-bar"></div></div></div>
@@ -1628,7 +1649,7 @@ function trendSVG(entries) {
 function renderHome() {
   $('home-hello').classList.toggle('hidden', !profile?.name);
   $('home-hello').textContent = profile?.name ? `Hi ${profile.name.split(' ')[0]} — ready for a rep?` : '';
-  $('home-tune').classList.toggle('hidden', !!seller().offer);
+  $('home-tune').classList.toggle('hidden', !!seller().offer && !seller().quick);
   $('call-cards').innerHTML = userCallTypes().map(k => { const c = CALL_TYPES[k]; return `
     <button class="mode" data-call="${k}"><div class="tag">${c.emoji} ${esc(c.tag)}</div><h3>${esc(c.label)}</h3><p>${esc(c.home)}</p></button>`; }).join('');
   document.querySelectorAll('[data-call]').forEach(b => b.onclick = () => startCall(buildConfig('random', { callType: b.dataset.call })));
@@ -1788,11 +1809,65 @@ function showWelcome(step, err = '', newCode = '') {
   show('welcome');
   $('w-join').classList.toggle('hidden', step !== 'join');
   $('w-about').classList.toggle('hidden', step !== 'about');
+  $('w-quick-panel').classList.toggle('hidden', step !== 'quick');
   if (step === 'join') {
     $('w-err').textContent = err;
-    $('w-code').focus();
+    checkQuickStart();
+  } else if (step === 'quick') {
+    $('q-quick').value = seller().quick ? seller().offer || '' : '';
+    $('q-quick-err').textContent = '';
+    $('q-quick').focus();
   } else openQuestionnaire(newCode);
 }
+
+// Quick start rides on the universal code switch in /admin; when it's on, the welcome screen leads with it.
+async function checkQuickStart() {
+  let open = false;
+  try { open = !!(await (await fetch('/api/join')).json()).quickStart; } catch {}
+  $('w-quick-card').classList.toggle('hidden', !open);
+  $('w-or').classList.toggle('hidden', !open);
+  $('w-go').classList.toggle('primary', !open);
+  (open ? $('w-quick') : $('w-code')).focus();
+}
+
+// Picks the industry whose keywords show up most in a one-line description (see "match" in industries.js).
+function guessCategory(text) {
+  let best = '', score = 0;
+  for (const [k, c] of Object.entries(CATEGORIES)) {
+    if (!c.match) continue;
+    const n = (text.match(new RegExp(c.match, 'gi')) || []).length;
+    if (n > score) { best = k; score = n; }
+  }
+  return best;
+}
+
+// Describe it in a sentence and go straight into a call. No code needed when quick start is open.
+async function quickStart(text, errEl, btn) {
+  text = text.trim();
+  if (text.split(/\s+/).length < 3) { errEl.textContent = 'Say a little about what you sell, like "I sell life insurance to young families."'; return; }
+  errEl.textContent = '';
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Setting up…';
+  try {
+    if (!settings.inviteCode && !settings.apiKey) {
+      const { code } = await api('/api/join', { method: 'POST', body: JSON.stringify({ quick: true }) });
+      settings = { ...settings, inviteCode: code };
+    }
+    if (usingProxy() && !profile) await loadProfile();
+    const category = guessCategory(text);
+    settings = { ...settings, pitch: text, seller: { offer: text.slice(0, 200), category, audience: CATEGORIES[category]?.audience || '', quick: true } };
+    LS.set('ph_settings', settings);
+    if (usingProxy()) await saveProfile();
+    startCall(buildConfig('random'));
+  } catch (e) {
+    errEl.textContent = e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = label;
+  }
+}
+$('w-quick-go').onclick = () => quickStart($('w-quick').value, $('w-quick-err'), $('w-quick-go'));
+$('q-quick-go').onclick = () => quickStart($('q-quick').value, $('q-quick-err'), $('q-quick-go'));
+$('q-quick-back').onclick = () => openQuestionnaire();
 
 // Swap what was typed (a personal code or the universal code) for the person's own code, then load them in.
 async function enterWithCode(raw) {
@@ -1800,7 +1875,7 @@ async function enterWithCode(raw) {
   settings = { ...settings, inviteCode: code, apiKey: '' };
   await loadProfile();
   LS.set('ph_settings', settings);
-  if (!profile.name || !profile.sells) showWelcome('about', '', via === 'universal' ? code : ''); else show('home');
+  if (!profile.sells) showWelcome('about', '', via === 'universal' ? code : ''); else show('home');
 }
 
 async function joinWithCode() {
@@ -1866,7 +1941,8 @@ const Q_STEPS = [
       <label for="q-name" style="margin-top:0">What's your name?</label>
       <input id="q-name" data-k="name" placeholder="e.g. Maria" maxlength="80" value="${esc(q.name)}">
       <label for="q-city">Your city <span style="color:var(--dim)">(optional, makes the people you call local)</span></label>
-      <input id="q-city" data-k="city" placeholder="e.g. San Antonio, TX" maxlength="120" value="${esc(q.city)}">`,
+      <input id="q-city" data-k="city" placeholder="e.g. San Antonio, TX" maxlength="120" value="${esc(q.city)}">
+      <p style="margin:18px 0 0"><button type="button" class="linkish" id="q-skip">Short on time? Skip the questions and just describe what you sell</button></p>`,
     check: () => !q.name.trim() && "What's your name?",
   },
   {
@@ -1973,6 +2049,7 @@ function renderQ() {
     renderQ();
   });
   $('q-body').querySelectorAll('[data-fill]').forEach(b => b.onclick = () => { q[b.dataset.fill] = b.dataset.v; renderQ(); });
+  if ($('q-skip')) $('q-skip').onclick = () => showWelcome('quick');
   const add = $('q-obj-add');
   if (add) {
     const addIt = () => { const v = $('q-obj-new').value.trim(); if (v && !q.objections.includes(v)) q.objections.push(v); renderQ(); $('q-obj-new').focus(); };
@@ -2013,11 +2090,11 @@ async function init() {
   history = usingProxy() ? [] : LS.get('ph_history', []);
   renderEnv();
   if (!settings.inviteCode && !settings.apiKey) { showWelcome('join'); return; }
-  if (!usingProxy()) { if (settings.myName) show('home'); else showWelcome('about'); return; }
+  if (!usingProxy()) { if (settings.myName || seller().offer) show('home'); else showWelcome('about'); return; }
   show('home');
   try {
     await loadProfile();
-    if (!profile.name || !profile.sells) showWelcome('about'); else show('home');
+    if (!profile.sells) showWelcome('about'); else show('home');
   } catch (e) {
     // A revoked or mistyped code sends you back to the welcome screen instead of a broken home page.
     if (e.type === 'invalid_invite') {

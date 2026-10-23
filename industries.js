@@ -12,6 +12,7 @@
     offer, customer, edge, price   placeholder examples for the questionnaire
     goals                    tap-to-fill answers for "What do you ask for at the end of a call?"
     objections               common pushback, offered as chips (people pick the ones they hear)
+    match                    words that suggest this industry when someone just types a sentence (quick start)
     types                    kinds of customers they'll meet; one is picked per call
                              { label: short name shown after the call, desc: who they are and what's really going on }
 */
@@ -48,7 +49,8 @@ window.PB_CALL_TYPES = {
 
 window.PB_INDUSTRIES = {
   insurance: {
-    label: 'Insurance', emoji: '🛡️', examples: 'Life, final expense, health, Medicare, auto/home', audience: 'people',
+    label: 'Insurance', emoji: '🛡️', examples: 'Life, final expense, health, Medicare, auto/home', match: 'insur|medicare|annuit|final expense|life polic|underwrit',
+    audience: 'people',
     calls: ['cold', 'interested', 'followup', 'past'],
     offer: 'e.g. Term and whole life insurance', customer: 'e.g. Young families and new homeowners, 28–45',
     edge: 'e.g. I shop 20+ carriers for the best rate, and most people qualify without a medical exam', price: 'e.g. Most families pay $30–60 a month',
@@ -66,7 +68,8 @@ window.PB_INDUSTRIES = {
     ],
   },
   real_estate: {
-    label: 'Real estate', emoji: '🏡', examples: "Listing and buyer's agents, mortgage and loan officers", audience: 'people',
+    label: 'Real estate', emoji: '🏡', examples: "Listing and buyer's agents, mortgage and loan officers", match: 'real estate|realtor|listing|home ?buyer|mortgage|loan officer|brokerage|propert',
+    audience: 'people',
     calls: ['cold', 'interested', 'followup', 'past'],
     offer: 'e.g. I help homeowners sell for top dollar', customer: 'e.g. Homeowners who have lived in their house 7+ years',
     edge: 'e.g. My listings sell in 18 days on average, 9 days faster than the area', price: 'e.g. 2.5% commission',
@@ -84,7 +87,8 @@ window.PB_INDUSTRIES = {
     ],
   },
   home_services: {
-    label: 'Home services', emoji: '🔧', examples: 'Solar, roofing, HVAC, pest control, windows, pools, security', audience: 'people',
+    label: 'Home services', emoji: '🔧', examples: 'Solar, roofing, HVAC, pest control, windows, pools, security', match: 'solar|roof|hvac|plumb|pest|window|pool|security system|alarm|landscap|gutter|siding|electric|remodel|contractor',
+    audience: 'people',
     calls: ['cold', 'interested', 'followup', 'past'],
     offer: 'e.g. Solar panels with no money down', customer: 'e.g. Homeowners with high summer power bills',
     edge: 'e.g. Local crew, 25-year warranty, and we handle all the permits', price: 'e.g. Most homes save $80–150 a month',
@@ -101,7 +105,8 @@ window.PB_INDUSTRIES = {
     ],
   },
   personal_care: {
-    label: 'Personal care', emoji: '💈', examples: 'Barbers, salons, nails, lashes, spas, tattoo shops', audience: 'people',
+    label: 'Personal care', emoji: '💈', examples: 'Barbers, salons, nails, lashes, spas, tattoo shops', match: 'barber|haircut|hair|salon|stylist|nail|lash|brow|spa\b|massage|tattoo|wax|makeup|beard|fade',
+    audience: 'people',
     calls: ['interested', 'followup', 'past'],
     offer: 'e.g. Fades, beard work, and full restyles', customer: 'e.g. Guys 18–40 who care about looking sharp',
     edge: 'e.g. Every cut starts with a real consultation, and I text you a reminder when you\'re due', price: 'e.g. $35 a cut, $50 with beard',
@@ -119,7 +124,8 @@ window.PB_INDUSTRIES = {
     ],
   },
   fitness: {
-    label: 'Health & fitness', emoji: '💪', examples: 'Gyms, personal trainers, med spas, chiropractors, dental front desks', audience: 'people',
+    label: 'Health & fitness', emoji: '💪', examples: 'Gyms, personal trainers, med spas, chiropractors, dental front desks', match: 'gym|fitness|personal train|trainer|yoga|pilates|med ?spa|botox|chiropract|dental|dentist|physical therap|wellness|crossfit',
+    audience: 'people',
     calls: ['interested', 'followup', 'past'],
     offer: 'e.g. Personal training and small-group classes', customer: 'e.g. Busy adults 30–55 who want to get back in shape',
     edge: 'e.g. A coach plans every session, and we check in weekly so people actually stick with it', price: 'e.g. Memberships from $129 a month',
@@ -136,7 +142,8 @@ window.PB_INDUSTRIES = {
     ],
   },
   auto: {
-    label: 'Auto', emoji: '🚗', examples: 'Car sales, dealership phone teams, detailing, repair shops', audience: 'people',
+    label: 'Auto', emoji: '🚗', examples: 'Car sales, dealership phone teams, detailing, repair shops', match: 'car |cars|auto|dealer|vehicle|detail|mechanic|tire|truck',
+    audience: 'people',
     calls: ['cold', 'interested', 'followup', 'past'],
     offer: 'e.g. New and used cars at a family-owned dealership', customer: 'e.g. Families shopping for a reliable SUV',
     edge: 'e.g. No-haggle pricing and a 7-day exchange if you change your mind', price: 'e.g. Most payments land around $450 a month',
@@ -152,7 +159,8 @@ window.PB_INDUSTRIES = {
     ],
   },
   financial: {
-    label: 'Financial', emoji: '📈', examples: 'Advisors, tax prep, credit repair', audience: 'people',
+    label: 'Financial', emoji: '📈', examples: 'Advisors, tax prep, credit repair', match: 'financial|advis|invest|retire|wealth|tax|credit repair|accounting|bookkeep|401',
+    audience: 'people',
     calls: ['cold', 'interested', 'followup', 'past'],
     offer: 'e.g. Retirement planning and investment management', customer: 'e.g. Teachers and nurses 10–15 years from retirement',
     edge: 'e.g. Flat-fee, no commissions, and I specialize in teachers and nurses', price: 'e.g. A flat $1,500 a year',
@@ -168,7 +176,8 @@ window.PB_INDUSTRIES = {
     ],
   },
   education: {
-    label: 'Education & coaching', emoji: '🎓', examples: 'Tutoring, coaches, school enrollment advisors', audience: 'people',
+    label: 'Education & coaching', emoji: '🎓', examples: 'Tutoring, coaches, school enrollment advisors', match: 'tutor|coach|course|school|enroll|lesson|teach|academy|training program|bootcamp',
+    audience: 'people',
     calls: ['interested', 'followup', 'past'],
     offer: 'e.g. One-on-one math and SAT tutoring', customer: 'e.g. Parents of high schoolers aiming for college',
     edge: 'e.g. Students improve a full letter grade in 8 weeks on average, or the next month is free', price: 'e.g. $70 an hour, packages of 10',
@@ -183,7 +192,8 @@ window.PB_INDUSTRIES = {
     ],
   },
   events: {
-    label: 'Events', emoji: '💍', examples: 'Wedding vendors, venues, photographers, catering', audience: 'people',
+    label: 'Events', emoji: '💍', examples: 'Wedding vendors, venues, photographers, catering', match: 'wedding|venue|event|cater|dj\b|florist|party|photo booth|planner',
+    audience: 'people',
     calls: ['interested', 'followup', 'past'],
     offer: 'e.g. Wedding photography and video', customer: 'e.g. Engaged couples planning a 100–150 guest wedding',
     edge: 'e.g. Sneak peeks within 48 hours, and a planning call so nothing is missed', price: 'e.g. Packages from $3,200',
@@ -198,7 +208,8 @@ window.PB_INDUSTRIES = {
     ],
   },
   marketing: {
-    label: 'Marketing & creative', emoji: '🎬', examples: 'Agencies, videographers, web design, social media managers', audience: 'businesses',
+    label: 'Marketing & creative', emoji: '🎬', examples: 'Agencies, videographers, web design, social media managers', match: 'marketing|agency|video|photograph|social media|web ?design|website|seo|branding|ads\b|advertis|content',
+    audience: 'businesses',
     calls: ['cold', 'interested', 'followup', 'past'],
     offer: 'e.g. Photos and short-form video for local businesses', customer: 'e.g. Restaurants, gyms and shops with under 20 staff',
     edge: 'e.g. I shoot, edit and post, so owners get fresh content every week without lifting a finger', price: 'e.g. Monthly packages from $400',
@@ -214,7 +225,8 @@ window.PB_INDUSTRIES = {
     ],
   },
   software: {
-    label: 'Software', emoji: '💻', examples: 'Sales reps booking demos and closing deals', audience: 'businesses',
+    label: 'Software', emoji: '💻', examples: 'Sales reps booking demos and closing deals', match: 'software|saas|app\b|platform|crm|demo|subscription tool',
+    audience: 'businesses',
     calls: ['cold', 'interested', 'followup', 'past'],
     offer: 'e.g. Scheduling and billing software for clinics', customer: 'e.g. Independent clinics with 2–15 providers',
     edge: 'e.g. Set up in a day, and it cuts no-shows by about a third', price: 'e.g. $99 a month per location',
@@ -230,7 +242,8 @@ window.PB_INDUSTRIES = {
     ],
   },
   b2b_services: {
-    label: 'Business services', emoji: '🤝', examples: 'Staffing, commercial cleaning, IT support, payroll, payments, business loans', audience: 'businesses',
+    label: 'Business services', emoji: '🤝', examples: 'Staffing, commercial cleaning, IT support, payroll, payments, business loans', match: 'staffing|cleaning|janitor|it support|managed service|payroll|merchant|payment processing|business loan|consult|logistics|printing',
+    audience: 'businesses',
     calls: ['cold', 'interested', 'followup', 'past'],
     offer: 'e.g. Commercial cleaning for offices', customer: 'e.g. Offices and clinics with 10–50 people',
     edge: 'e.g. Bonded crews, the same team every visit, and we fix any miss within 24 hours', price: 'e.g. Most offices pay $600–1,200 a month',
