@@ -21,8 +21,8 @@ css/
   screens.css           each screen, plus phone sizes
 
 data/                   ← edit these to change who people practice with
-  professions.js        ~175 jobs people search for ("Videographer", "Barber"…), each pointing to a group below
-  industries.js         the 18 groups: examples, objections, customer types
+  professions.js        ~370 jobs people search for ("Videographer", "Barber"…), each pointing to a group below
+  industries.js         the 20 groups: examples, objections, customer types
   call-types.js         cold call, interested lead, follow-up, past customer
   personalities.js      personality traits, how common each is, rules, presets, backgrounds
   business-types.js     kinds of business and owner types, for people who call business owners

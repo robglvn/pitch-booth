@@ -15,11 +15,14 @@ function searchProfessions(query, limit = 8) {
     let score = name.startsWith(q) ? 100 : name.includes(q) ? 80 : 0;
     // "pianos" should find "piano": also try each word without a trailing s.
     const hit = (text, w) => text.split(/[^a-z0-9]+/).some(n => n.startsWith(w) || (w.length > 3 && w.endsWith('s') && n.startsWith(w.slice(0, -1))));
+    let matched = 0;
     for (const w of words) {
-      if (hit(name, w)) score += 60;
-      else if (hit(extra, w)) score += 30;
+      if (hit(name, w)) { score += 60; matched++; }
+      else if (hit(extra, w)) { score += 30; matched++; }
       else if (group.includes(w)) score += 10;
     }
+    // Jobs that match more of the words win ties ("divorce lawyer" → Family law attorney, not any lawyer).
+    score += matched * 20;
     return { ...p, score };
   }).filter(p => p.score > 0).sort((a, b) => b.score - a.score).slice(0, limit);
 }
