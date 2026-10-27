@@ -1,5 +1,5 @@
 /*
-  PITCH BOOTH — industries and call types
+  PITCH BOOTH — industries
 
   Every practice call is generated fresh: the app picks one customer type from the person's industry,
   mixes in a random personality, mood, age and background, and the AI turns that into a specific human.
@@ -8,7 +8,7 @@
   To add an industry, copy any entry below and edit it:
     label, emoji, examples   what people see in the questionnaire
     audience                 'people' (individuals and families) or 'businesses'
-    calls                    which call types are ticked by default (see CALL_TYPES; each has a goal, a tip, and how the call opens)
+    calls                    which call types are ticked by default (see data/call-types.js)
     offer, customer, edge, price   placeholder examples for the questionnaire
     goals                    tap-to-fill answers for "What do you ask for at the end of a call?"
     objections               common pushback, offered as chips (people pick the ones they hear)
@@ -16,40 +16,6 @@
     types                    kinds of customers they'll meet; one is picked per call
                              { label: short name shown after the call, desc: who they are and what's really going on }
 */
-window.PB_CALL_TYPES = {
-  cold: {
-    emoji: '☎️', label: 'Cold call', tag: 'Never heard of you', desc: "They've never heard of you",
-    home: "Someone who's never heard of you picks up. Earn their attention.",
-    tip: 'Ask permission first ("Did I catch you at a bad time?"), say why you called them, then ask a question before you pitch.',
-    goal: 'earn their attention in the first seconds, spark real interest, and book a next step',
-    prospect: 'They have never heard of the caller; this is a cold call out of nowhere.',
-    opening: "someone you don't know is calling you",
-  },
-  interested: {
-    emoji: '📝', label: 'Interested lead', tag: 'They reached out', desc: 'They asked for info or a quote',
-    home: 'They reached out first. Find out what they need and win them.',
-    tip: 'They reached out for a reason. Ask what made them reach out before you explain anything.',
-    goal: 'find out what they really need, recommend the right fit, and book or close',
-    prospect: 'A few days ago they reached out or asked for information or a quote, so they expect the call, but they have questions, hesitations, and maybe other options.',
-    opening: 'someone is calling back about what you asked about',
-  },
-  followup: {
-    emoji: '🔁', label: 'Follow-up', tag: 'Went quiet', desc: 'You talked before; they went quiet',
-    home: '"Let me think about it" went quiet. Re-engage and get a decision.',
-    tip: "Remind them where you left off, then ask what's changed or what's really holding them back.",
-    goal: 're-engage them, uncover what is really holding them back, and get a clear decision',
-    prospect: "They already talked with the caller once, said they'd think about it (or stopped replying), and haven't decided.",
-    opening: 'someone you talked with before is following up with you',
-  },
-  past: {
-    emoji: '⭐', label: 'Past customer', tag: 'Bought before', desc: 'They bought from you before',
-    home: 'They bought before. Reconnect, rebook, upgrade, or ask for a referral.',
-    tip: 'Reconnect first: ask how things have been since last time before you ask for anything.',
-    goal: 'reconnect, then rebook, renew, upgrade, or ask for a referral',
-    prospect: "They bought from the caller before. It's been a while, and they may have drifted, had a so-so experience, or simply forgotten to come back.",
-    opening: "someone whose business you've used before is calling you",
-  },
-};
 
 window.PB_INDUSTRIES = {
   insurance: {

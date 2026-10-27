@@ -13,7 +13,7 @@
       ]
     },
     {
-      "source": "/(industries|personalities).js",
+      "source": "/data/(.*)",
       "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
     },
     {

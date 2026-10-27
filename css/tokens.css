@@ -1,0 +1,29 @@
+/* Pitch Booth design tokens: every color, font, radius and shadow. Change the look here. */
+/* Warm ivory paper, ink text, one sage accent. Cards are frosted glass over soft color washes. */
+:root {
+  --bg: #f5f2ec;
+  --panel: rgba(255, 255, 255, .62);
+  --panel-solid: #fffdfa;
+  --panel-2: #f0ece5;
+  --border: rgba(28, 25, 23, .09);
+  --border-strong: rgba(28, 25, 23, .18);
+  --glass-edge: rgba(255, 255, 255, .75);
+  --text: #1c1917;
+  --ink: #1c1917;
+  --muted: #6b645c;
+  --dim: #a39b91;
+  --green: #3f7d5c;
+  --green-dim: #e4efe7;
+  --red: #b9472f;
+  --red-dim: #f8e9e4;
+  --amber: #b7822a;
+  --amber-dim: #f8f0de;
+  --blue: #4a6fa5;
+  --radius: 20px;
+  --radius-sm: 12px;
+  --shadow: 0 1px 2px rgba(28, 25, 23, .04), 0 10px 30px -12px rgba(28, 25, 23, .12);
+  --shadow-lift: 0 2px 4px rgba(28, 25, 23, .04), 0 22px 44px -18px rgba(28, 25, 23, .22);
+  --ring: 0 0 0 4px rgba(63, 125, 92, .16);
+  --serif: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --sans: "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
