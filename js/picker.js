@@ -4,6 +4,13 @@
 
 const professionByName = name => PROFESSIONS.find(p => p.name === name);
 
+// The grey hint in a company box: a fresh made-up name that fits the job ("Cedar Hill Barbershop"),
+// or the group's example when the job has no word in data/company-names.js. Never saved.
+function exampleCompany(professionName, group) {
+  const n = window.PB_COMPANY_NAMES, word = n?.words[professionName];
+  return word ? `e.g. ${pick(n.starts)} ${word}` : CATEGORIES[group]?.company || 'e.g. Your business name';
+}
+
 // Ranks jobs for a search like "video" or "I'm a barber": whole-name matches first, then words in the name,
 // then extra search words, then the group's name.
 function searchProfessions(query, limit = 8) {

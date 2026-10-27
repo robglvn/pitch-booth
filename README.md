@@ -26,6 +26,7 @@ data/                   ← edit these to change who people practice with
   call-types.js         cold call, interested lead, follow-up, past customer
   personalities.js      personality traits, how common each is, rules, presets, backgrounds
   business-types.js     kinds of business and owner types, for people who call business owners
+  company-names.js      words for the made-up example in the company box ("Cedar Hill Barbershop")
 
 js/                     loaded in this order (see the bottom of index.html)
   core.js               shared helpers and screen switching

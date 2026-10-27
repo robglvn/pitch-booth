@@ -35,6 +35,7 @@ function showConfirmStage(p, suggestion) {
   $('ind-offer').value = keep ? s.offer || '' : p.group === 'other' ? suggestion || '' : suggestion || '';
   $('ind-offer').placeholder = p.group === 'other' ? 'e.g. I train dogs and run puppy classes' : CATEGORIES[p.group].offer;
   $('ind-company').value = s.company || '';
+  $('ind-company').placeholder = exampleCompany(p.profession, p.group);
   $('ind-err').textContent = '';
   $('ind-offer').focus();
   $('ind-offer').select();
