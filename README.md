@@ -35,7 +35,7 @@ js/                     loaded in this order (see the bottom of index.html)
   call.js               the call: building the person, Get ready screen, dialing, each turn
   talk.js               the microphone: hold to talk, or hands-free
   grading.js            ending a call and getting the score
-  screens/              scorecard, home, setup, settings, welcome, questionnaire
+  screens/              scorecard, home, setup, settings, welcome, questionnaire, industry (the "Change" picker)
   app.js                browser checks and startup (loaded last)
 
 api/                    serverless functions (Vercel)

@@ -148,10 +148,10 @@ async function keepAwake(on) {
 }
 
 function modeLabel(cfg) {
-  const d = cfg.difficulty[0].toUpperCase() + cfg.difficulty.slice(1);
-  if (cfg.mode === 'drill') return `Objection drill · ${d}`;
+  const d = DIFFICULTY_LABELS[cfg.difficulty] || cfg.difficulty;
+  if (cfg.mode === 'drill') return `Pushback practice · ${d}`;
   if (CALL_TYPES[cfg.callType]) return `${CALL_TYPES[cfg.callType].label} · ${d}`;
-  if (cfg.mode === 'scenario') return `Scenario · ${d}`;
+  if (cfg.mode === 'scenario') return `Specific call · ${d}`;
   return `Random call · ${d}`;
 }
 

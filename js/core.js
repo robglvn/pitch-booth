@@ -17,6 +17,8 @@ const PHASES = [
 ];
 const MOODS = { cold: ['#b9472f', 'Cold'], guarded: ['#c98a2b', 'Guarded'], neutral: ['#a39b91', 'Neutral'], warming: ['#8fa85e', 'Warming up'], interested: ['#3f7d5c', 'Interested'], sold: ['#2f6248', 'Sold'] };
 const SCORE_KEYS = [['opener', 'Opener'], ['discovery', 'Discovery'], ['listening', 'Listening'], ['objection_handling', 'Objection handling'], ['close_attempt', 'Close attempt'], ['rapport', 'Rapport']];
+// Shown to people; the ids (easy/realistic/brutal) stay the same in prompts and saved calls.
+const DIFFICULTY_LABELS = { easy: 'Easy', realistic: 'Normal', brutal: 'Hard' };
 const DRILL_REPS = 5;
 const BRUTAL_UNLOCK = 3;
 const BRUTAL_CUTOFF_MS = 20000;

@@ -10,7 +10,7 @@ function renderScorecard(e, justUnlocked = false) {
   const ratio = e.metrics.statements ? (e.metrics.questions / e.metrics.statements).toFixed(1) : '—';
   const outcomeLabel = { hung_up: 'Owner hung up', no_interest: 'Not interested', maybe_later: 'Maybe later', follow_up_agreed: 'Agreed to a follow-up', meeting_booked: 'Meeting booked', sale: 'Sale!' }[g.outcome] || g.outcome;
   $('view-score').innerHTML = `
-    ${justUnlocked ? `<div class="banner warn">${icon('unlock')}<span>Brutal difficulty unlocked. People will interrupt, go cold, and stack objections.</span></div>` : ''}
+    ${justUnlocked ? `<div class="banner warn">${icon('unlock')}<span>Hard calls unlocked. People will interrupt, go cold, and stack objections.</span></div>` : ''}
     <div class="card">
       <div class="score-head">
         <div><div class="small muted" style="font-weight:600;margin-bottom:4px">Pitch Check</div><div class="big" style="color:${scoreColor(e.overall)}">${e.overall.toFixed(1)}</div><div class="small muted">overall / 10</div></div>

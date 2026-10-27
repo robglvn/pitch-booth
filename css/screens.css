@@ -1,10 +1,49 @@
 /* Pitch Booth screen styles: home, call, scorecard, welcome, questionnaire, get ready, settings, and phone sizes. */
 
 /* ---------- Home ---------- */
-#home-hello { font-size: var(--fs-3xl) !important; margin: 0 0 var(--s-6) !important; }
-.grid-calls { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: var(--s-4); }
-.home-more { margin-top: var(--s-5); gap: var(--s-3); }
-.tune { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); flex-wrap: wrap; margin-bottom: var(--s-6); background: rgba(228, 239, 231, .75); }
+#view-home { max-width: 760px; margin: 0 auto; }
+.home-head { margin-bottom: var(--s-6); }
+#home-hello { font-size: var(--fs-3xl); margin: 0 0 var(--s-2); }
+.industry-line {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-1) var(--s-2); text-align: left;
+  background: none; border: 0; padding: var(--s-1) 0; font-size: var(--fs-base); color: var(--text);
+}
+.industry-line .ind-offer { color: var(--muted); }
+.industry-line .ind-offer::before { content: "· "; }
+.industry-line .ind-change { color: var(--green-text); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; margin-left: var(--s-1); }
+.start-card {
+  display: flex; align-items: center; gap: var(--s-5); width: 100%; text-align: left;
+  padding: var(--s-6) var(--s-8); min-height: 112px; border-radius: var(--radius); border: 0;
+  background: var(--ink); color: #fffdfa; box-shadow: 0 18px 40px -20px rgba(28, 25, 23, .65);
+  transition: transform .2s cubic-bezier(.2, .7, .2, 1), box-shadow .2s;
+}
+.start-card:hover { transform: translateY(-2px); box-shadow: 0 24px 48px -20px rgba(28, 25, 23, .7); }
+.start-icon { display: grid; place-items: center; width: 60px; height: 60px; flex: none; border-radius: 50%; background: var(--green); color: #fff; }
+.start-icon .ic { width: 28px; height: 28px; }
+.start-text { flex: 1; display: flex; flex-direction: column; gap: var(--s-1); }
+.start-text b { font-family: var(--serif); font-weight: 400; font-size: var(--fs-2xl); line-height: 1.1; }
+.start-text span { color: rgba(255, 253, 250, .78); font-size: var(--fs-base); }
+.start-arrow .ic { width: 26px; height: 26px; opacity: .8; }
+.home-sub { font-size: var(--fs-lg); font-weight: 600; margin: var(--s-10) 0 var(--s-3); }
+.call-list { display: grid; gap: var(--s-2); }
+.call-row {
+  display: flex; align-items: center; gap: var(--s-4); width: 100%; text-align: left; min-height: 76px;
+  padding: var(--s-3) var(--s-5); border-radius: var(--radius-sm); background: var(--panel); border: 1px solid var(--glass-edge);
+  box-shadow: var(--shadow); -webkit-backdrop-filter: blur(20px) saturate(150%); backdrop-filter: blur(20px) saturate(150%);
+  transition: background .2s, transform .2s;
+}
+.call-row:hover { background: rgba(255, 255, 255, .88); transform: translateX(2px); }
+.call-row .mode-icon { margin: 0; width: 44px; height: 44px; }
+.call-row-text { flex: 1; display: flex; flex-direction: column; }
+.call-row-text b { font-size: var(--fs-base); }
+.call-row-text span { font-size: var(--fs-sm); color: var(--muted); }
+.call-row > .ic { color: var(--muted); }
+.home-more { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-1) var(--s-4); margin-top: var(--s-5); font-size: var(--fs-sm); }
+.progress { margin-top: var(--s-10); }
+.progress-line { display: flex; flex-direction: column; gap: var(--s-1); margin: var(--s-3) 0 0; }
+.progress-line b { font-size: var(--fs-lg); }
+.progress-line span { color: var(--muted); font-size: var(--fs-sm); }
+.tune { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); flex-wrap: wrap; margin-top: var(--s-6); background: rgba(228, 239, 231, .75); }
 .tune b { font-family: var(--serif); font-weight: 400; font-size: var(--fs-xl); display: block; line-height: 1.2; margin-bottom: var(--s-1); }
 
 /* ---------- Call screen ---------- */
@@ -183,7 +222,12 @@ details summary:hover { color: var(--text); }
   /* Phones: call cards lay out sideways, icon on the left, so all four fit on screen. */
   .mode { display: grid; grid-template-columns: 48px 1fr; column-gap: var(--s-4); row-gap: var(--s-1); align-items: start; padding: var(--s-5); }
   .mode-icon { grid-row: span 2; margin: 0; }
-  .home-more .btn { flex: 1 1 auto; }
+  .start-card { padding: var(--s-5); gap: var(--s-4); min-height: 96px; }
+  .start-icon { width: 52px; height: 52px; }
+  .start-text b { font-size: var(--fs-xl); }
+  .start-arrow { display: none; }
+  .industry-line .ind-offer { flex-basis: 100%; }
+  .industry-line .ind-offer::before { content: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

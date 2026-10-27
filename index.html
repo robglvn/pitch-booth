@@ -97,22 +97,31 @@
     </div>
   </section>
 
-  <!-- HOME -->
+  <!-- HOME: one big start button, then who to call, then progress -->
   <section id="view-home">
-    <h2 id="home-hello" class="hidden" style="font-size:22px;margin:0 0 14px"></h2>
+    <div class="home-head">
+      <h2 id="home-hello">Ready to practice?</h2>
+      <button class="industry-line" id="home-industry" aria-label="Change what you sell"></button>
+    </div>
+    <button class="start-card" id="mode-random">
+      <span class="start-icon" data-icon="phone"></span>
+      <span class="start-text"><b>Start a practice call</b><span>We'll pick someone for you to call.</span></span>
+      <span class="start-arrow" data-icon="arrow"></span>
+    </button>
+    <h3 class="home-sub">Or choose who to call</h3>
+    <div class="call-list" id="call-cards"></div>
+    <div class="home-more">
+      <span class="muted">More ways to practice:</span>
+      <button class="linkish" id="mode-drill">Practice handling pushback</button>
+      <button class="linkish" id="mode-scenario">Set up a specific call</button>
+    </div>
     <div class="card tune hidden" id="home-tune">
-      <div><b>Make the calls fit what you sell</b><span class="small muted">A few quick questions, and the people you call will match your real customers.</span></div>
-      <button class="btn primary" id="home-tune-go">Answer the questions</button>
+      <div><b>Make the calls match your customers</b><span class="small muted">A few more questions about what you sell, and the people you call get more realistic.</span></div>
+      <button class="btn" id="home-tune-go">Answer the questions</button>
     </div>
-    <div class="grid-calls" id="call-cards"></div>
-    <div class="row home-more">
-      <button class="btn primary" id="mode-random" data-icon="shuffle">Surprise me</button>
-      <button class="btn" id="mode-scenario" data-icon="sliders">Pick your scenario</button>
-      <button class="btn" id="mode-drill" data-icon="target">Objection drill</button>
-    </div>
-    <div class="stats" id="home-stats"></div>
-    <div class="card" style="margin-top:var(--s-6)">
-      <div class="row" style="justify-content:space-between"><h2 style="margin:0">Score trend</h2><span class="small muted" id="unlock-note"></span></div>
+    <div class="card progress">
+      <div class="row" style="justify-content:space-between"><h2 style="margin:0">Your progress</h2><span class="small muted" id="unlock-note"></span></div>
+      <p class="progress-line" id="home-stats"></p>
       <div id="home-trend"></div>
     </div>
   </section>
@@ -120,9 +129,9 @@
   <!-- SETUP -->
   <section id="view-setup" class="hidden">
     <div class="card" style="max-width:640px">
-      <h2 id="setup-title">Pick your scenario</h2>
+      <h2 id="setup-title">Set up a specific call</h2>
       <div id="setup-objection-wrap">
-        <label>Objection to drill</label>
+        <label>Pushback to practice</label>
         <select id="setup-objection"></select>
       </div>
       <label>Kind of call</label>
@@ -138,8 +147,8 @@
       <label>Difficulty</label>
       <div class="seg" id="setup-difficulty">
         <button data-d="easy">Easy</button>
-        <button data-d="realistic">Realistic</button>
-        <button data-d="brutal">Brutal</button>
+        <button data-d="realistic">Normal</button>
+        <button data-d="brutal">Hard</button>
       </div>
       <div class="small muted" id="setup-brutal-note" style="margin-top:6px"></div>
       <div class="row" style="margin-top:20px">
@@ -206,6 +215,22 @@
       <div id="hist-list"></div>
     </div>
   </section>
+</div>
+
+<!-- WHAT YOU SELL: industry picker (opened from "Change" on the home screen) -->
+<div class="modal-bg hidden" id="industry-modal">
+  <div class="card modal">
+    <h2>What do you sell?</h2>
+    <p class="muted" style="margin:0 0 var(--s-5)">Pick the closest fit. The people you call will match it.</p>
+    <div class="choices cats" id="ind-grid" role="radiogroup" aria-label="Industry"></div>
+    <label for="ind-offer">In one sentence, what do you offer?</label>
+    <input id="ind-offer" maxlength="200">
+    <div class="w-err" id="ind-err"></div>
+    <div class="row" style="margin-top:var(--s-4)">
+      <button class="btn primary" id="ind-save">Save</button>
+      <button class="btn" id="ind-cancel">Cancel</button>
+    </div>
+  </div>
 </div>
 
 <!-- SETTINGS MODAL -->
@@ -303,6 +328,7 @@
 <script src="js/screens/settings.js"></script>
 <script src="js/screens/welcome.js"></script>
 <script src="js/screens/questionnaire.js"></script>
+<script src="js/screens/industry.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
