@@ -85,7 +85,7 @@ function renderPrep() {
       </div>
       <div class="pitch-box">${pitchHtml()}</div>
       <div class="row prep-actions">
-        <button class="btn primary" id="prep-call">📞 Call ${esc(first)}</button>
+        <button class="btn primary" id="prep-call">${icon('phone')} Call ${esc(first)}</button>
         <button class="btn" id="prep-other">Someone else</button>
         <button class="btn" id="prep-back">Back</button>
       </div>
@@ -313,7 +313,7 @@ function renderCoach() {
     const current = ph.id === c.currentPhase && !c.ended;
     const dimmed = drill && (ph.id === 'opener' || ph.id === 'intro');
     return `<li class="${done ? 'done' : ''} ${current ? 'current' : ''}" style="${dimmed ? 'opacity:.4' : ''}">
-      <div class="box">${done ? '✓' : ''}</div>
+      <div class="box">${done ? icon('check', 14) : ''}</div>
       <div><div class="t">${esc(ph.t)}</div><div class="meta">${esc(meta)}</div>${current && settings.showTips ? `<div class="hint">${esc(ph.hint)}</div>` : ''}</div>
     </li>`;
   }).join('');

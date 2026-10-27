@@ -10,10 +10,10 @@ function renderScorecard(e, justUnlocked = false) {
   const ratio = e.metrics.statements ? (e.metrics.questions / e.metrics.statements).toFixed(1) : '—';
   const outcomeLabel = { hung_up: 'Owner hung up', no_interest: 'Not interested', maybe_later: 'Maybe later', follow_up_agreed: 'Agreed to a follow-up', meeting_booked: 'Meeting booked', sale: 'Sale!' }[g.outcome] || g.outcome;
   $('view-score').innerHTML = `
-    ${justUnlocked ? '<div class="banner warn">🔓 Brutal difficulty unlocked. Owners will interrupt, go cold, and stack objections.</div>' : ''}
+    ${justUnlocked ? `<div class="banner warn">${icon('unlock')}<span>Brutal difficulty unlocked. People will interrupt, go cold, and stack objections.</span></div>` : ''}
     <div class="card">
       <div class="score-head">
-        <div><div class="small muted" style="text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Pitch Check</div><div class="big" style="color:${scoreColor(e.overall)}">${e.overall.toFixed(1)}</div><div class="small muted">overall / 10</div></div>
+        <div><div class="small muted" style="font-weight:600;margin-bottom:4px">Pitch Check</div><div class="big" style="color:${scoreColor(e.overall)}">${e.overall.toFixed(1)}</div><div class="small muted">overall / 10</div></div>
         <div style="flex:1;min-width:220px">
           <div style="font-family:var(--serif);font-size:28px;line-height:1.15">${esc(p.card_summary)}</div>
           <div class="small muted">${esc(modeLabel(e))}${e.objection ? ` · “${esc(e.objection)}”` : ''} · ${fmt(e.durationSecs)} · ${new Date(e.date).toLocaleString()}</div>
@@ -22,8 +22,8 @@ function renderScorecard(e, justUnlocked = false) {
       </div>
       <p style="margin:14px 0 0">${esc(g.summary)}</p>
       ${g.asked_for_sale
-        ? `<div class="flag good">✅ <b>You asked for the sale.</b>${g.asked_for_sale_quote ? `<div class="quote">“${esc(g.asked_for_sale_quote)}”</div>` : ''}</div>`
-        : `<div class="flag bad">🚩 <b>You never asked for the sale.</b> Most beginners don't. Next call, ask directly for a concrete next step — e.g. “Can I come by Thursday and shoot a sample reel for you?”</div>`}
+        ? `<div class="flag good">${icon('check')}<div><b>You asked for the next step.</b>${g.asked_for_sale_quote ? `<div class="quote">“${esc(g.asked_for_sale_quote)}”</div>` : ''}</div></div>`
+        : `<div class="flag bad">${icon('flag')}<div><b>You never asked for the next step.</b> Most beginners don't. Next call, ask directly for something concrete${seller().goal ? `, like: ${esc(seller().goal)}` : ', like a time to meet this week'}.</div></div>`}
     </div>
     <div class="two">
       <div class="card">

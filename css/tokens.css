@@ -1,29 +1,69 @@
-/* Pitch Booth design tokens: every color, font, radius and shadow. Change the look here. */
-/* Warm ivory paper, ink text, one sage accent. Cards are frosted glass over soft color washes. */
+/*
+  Pitch Booth design tokens: every color, size and space in one place. Change the look here.
+
+  Warm ivory paper, ink text, one sage accent. Cards are frosted glass over soft color washes.
+  Built to be easy to read: body text is 17px, nothing is smaller than 14px, every text color
+  passes WCAG AA contrast (4.5:1) on the page and card backgrounds, and tap targets are 44px+.
+*/
 :root {
+  /* Surfaces */
   --bg: #f5f2ec;
-  --panel: rgba(255, 255, 255, .62);
+  --panel: rgba(255, 255, 255, .66);
   --panel-solid: #fffdfa;
   --panel-2: #f0ece5;
-  --border: rgba(28, 25, 23, .09);
-  --border-strong: rgba(28, 25, 23, .18);
-  --glass-edge: rgba(255, 255, 255, .75);
+  --border: rgba(28, 25, 23, .1);
+  --border-strong: rgba(28, 25, 23, .2);
+  --glass-edge: rgba(255, 255, 255, .8);
+
+  /* Text */
   --text: #1c1917;
   --ink: #1c1917;
-  --muted: #6b645c;
-  --dim: #a39b91;
+  --muted: #5f5850;       /* secondary text, 6:1 on --bg */
+  --dim: #6f685f;         /* hints and placeholders, 4.7:1 on --panel-2 */
+
+  /* Accent and status. *-text variants are dark enough for text; the plain ones are for fills. */
   --green: #3f7d5c;
+  --green-text: #356b4e;
   --green-dim: #e4efe7;
   --red: #b9472f;
+  --red-text: #9a3a25;
   --red-dim: #f8e9e4;
   --amber: #b7822a;
   --amber-dim: #f8f0de;
-  --blue: #4a6fa5;
-  --radius: 20px;
-  --radius-sm: 12px;
-  --shadow: 0 1px 2px rgba(28, 25, 23, .04), 0 10px 30px -12px rgba(28, 25, 23, .12);
-  --shadow-lift: 0 2px 4px rgba(28, 25, 23, .04), 0 22px 44px -18px rgba(28, 25, 23, .22);
-  --ring: 0 0 0 4px rgba(63, 125, 92, .16);
+
+  /* Type scale */
   --serif: "Instrument Serif", "Iowan Old Style", Georgia, serif;
   --sans: "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --fs-xs: 14px;          /* the smallest text anywhere */
+  --fs-sm: 15px;
+  --fs-base: 17px;
+  --fs-lg: 19px;
+  --fs-xl: 24px;
+  --fs-2xl: 30px;
+  --fs-3xl: 40px;
+  --fs-display: 52px;
+
+  /* Spacing: an 4px-based scale. Small steps inside a group, big steps between groups. */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+  --s-16: 64px;
+
+  /* Control heights: every button and field is one of these */
+  --h-sm: 44px;
+  --h-md: 52px;
+  --h-lg: 60px;
+
+  /* Shape and depth */
+  --radius: 20px;
+  --radius-sm: 14px;
+  --shadow: 0 1px 2px rgba(28, 25, 23, .04), 0 10px 30px -12px rgba(28, 25, 23, .12);
+  --shadow-lift: 0 2px 4px rgba(28, 25, 23, .04), 0 22px 44px -18px rgba(28, 25, 23, .22);
+  --ring: 0 0 0 4px rgba(63, 125, 92, .2);
 }

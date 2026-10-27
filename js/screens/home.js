@@ -20,7 +20,7 @@ function renderHome() {
   $('home-hello').textContent = profile?.name ? `Hi ${profile.name.split(' ')[0]} — ready for a rep?` : '';
   $('home-tune').classList.toggle('hidden', !!seller().offer && !seller().quick);
   $('call-cards').innerHTML = userCallTypes().map(k => { const c = CALL_TYPES[k]; return `
-    <button class="mode" data-call="${k}"><div class="tag">${c.emoji} ${esc(c.tag)}</div><h3>${esc(c.label)}</h3><p>${esc(c.home)}</p></button>`; }).join('');
+    <button class="mode" data-call="${k}"><span class="mode-icon">${icon(c.icon, 24)}</span><h3>${esc(c.label)}</h3><p>${esc(c.home)}</p></button>`; }).join('');
   document.querySelectorAll('[data-call]').forEach(b => b.onclick = () => startCall(buildConfig('random', { callType: b.dataset.call })));
   const n = history.length;
   const last5 = history.slice(0, 5);
@@ -31,7 +31,7 @@ function renderHome() {
     ['Calls completed', n], ['Avg (last 5)', avg], ['Asked for the sale', askRate], ['Best score', best],
   ].map(([k, v]) => `<div class="card stat"><div class="v">${v}</div><div class="k">${k}</div></div>`).join('');
   $('home-trend').innerHTML = trendSVG(history);
-  $('unlock-note').textContent = (brutalUnlocked() ? '🔓 Brutal unlocked' : `🔒 Brutal unlocks after ${BRUTAL_UNLOCK} calls (${n}/${BRUTAL_UNLOCK})`);
+  $('unlock-note').innerHTML = `<span class="row" style="gap:6px">${brutalUnlocked() ? `${icon('unlock', 16)} Brutal unlocked` : `${icon('lock', 16)} Brutal unlocks after ${BRUTAL_UNLOCK} calls (${n}/${BRUTAL_UNLOCK})`}</span>`;
 }
 
 function renderHistory() {

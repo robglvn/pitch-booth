@@ -32,8 +32,8 @@
   <header class="top">
     <div class="brand" id="brand" style="cursor:pointer"><span class="dot"></span>Pitch Booth</div>
     <div class="row" id="top-nav">
-      <button class="icon-btn" id="btn-history">History</button>
-      <button class="icon-btn" id="btn-settings">⚙ Settings</button>
+      <button class="icon-btn" id="btn-history" data-icon="clock">History</button>
+      <button class="icon-btn" id="btn-settings" data-icon="settings">Settings</button>
     </div>
   </header>
 
@@ -54,7 +54,7 @@
         <label for="w-quick" style="margin-top:0">What do you sell? <span style="color:var(--dim)">A sentence is enough</span></label>
         <textarea id="w-quick" rows="3" maxlength="600" placeholder="e.g. I'm a barber and want more regulars. Or: I sell life insurance to young families."></textarea>
         <div class="w-err" id="w-quick-err"></div>
-        <button class="btn primary big" id="w-quick-go">⚡ Start a call</button>
+        <button class="btn primary big" id="w-quick-go" data-icon="phone">Start a call</button>
         <p class="small muted" style="margin:14px 0 0;text-align:center">No sign-up. You can add details later.</p>
       </div>
       <div class="or hidden" id="w-or"><span>or use an invite code</span></div>
@@ -80,7 +80,7 @@
       <div class="card">
         <textarea id="q-quick" rows="4" maxlength="600" aria-label="What you sell" placeholder="e.g. I'm a barber and want more regulars. Or: I sell life insurance to young families."></textarea>
         <div class="w-err" id="q-quick-err"></div>
-        <button class="btn primary big" id="q-quick-go">⚡ Start a call</button>
+        <button class="btn primary big" id="q-quick-go" data-icon="phone">Start a call</button>
       </div>
       <p style="text-align:center;margin-top:14px"><button type="button" class="linkish" id="q-quick-back">Answer the full questions instead</button></p>
     </div>
@@ -106,12 +106,12 @@
     </div>
     <div class="grid-calls" id="call-cards"></div>
     <div class="row home-more">
-      <button class="btn primary" id="mode-random">🎲 Surprise me</button>
-      <button class="btn" id="mode-scenario">Pick your scenario</button>
-      <button class="btn" id="mode-drill">Objection drill</button>
+      <button class="btn primary" id="mode-random" data-icon="shuffle">Surprise me</button>
+      <button class="btn" id="mode-scenario" data-icon="sliders">Pick your scenario</button>
+      <button class="btn" id="mode-drill" data-icon="target">Objection drill</button>
     </div>
     <div class="stats" id="home-stats"></div>
-    <div class="card" style="margin-top:14px">
+    <div class="card" style="margin-top:var(--s-6)">
       <div class="row" style="justify-content:space-between"><h2 style="margin:0">Score trend</h2><span class="small muted" id="unlock-note"></span></div>
       <div id="home-trend"></div>
     </div>
@@ -201,8 +201,8 @@
       <h2>Score trend</h2>
       <div id="hist-trend"></div>
     </div>
-    <div class="card" style="margin-top:14px;padding:6px 0 0">
-      <h2 style="padding:12px 16px 4px">Past calls</h2>
+    <div class="card" style="margin-top:var(--s-6);padding:var(--s-2) 0 0">
+      <h2 style="padding:var(--s-4) var(--s-5) var(--s-1)">Past calls</h2>
       <div id="hist-list"></div>
     </div>
   </section>
@@ -216,14 +216,14 @@
     <input id="s-name" placeholder="e.g. Rob">
     <div class="row" style="justify-content:space-between;margin-top:16px">
       <label for="s-pitch" style="margin:0">Your practice brief</label>
-      <button class="btn" id="s-rebuild" style="padding:6px 14px;font-size:13px">Rebuild with questions</button>
+      <button class="btn sm" id="s-rebuild">Rebuild with questions</button>
     </div>
     <textarea id="s-pitch" rows="6" style="margin-top:6px"></textarea>
     <div class="small muted" style="margin-top:4px">What the people you call and your coach know about what you sell.</div>
     <label for="s-city">Your city <span style="color:var(--dim)">(optional)</span></label>
     <input id="s-city" placeholder="e.g. San Antonio, TX">
-    <label class="row small" style="color:var(--text);margin-top:18px"><input type="checkbox" id="s-voice-on" style="width:auto"> Read the other person's replies out loud</label>
-    <label class="row small" style="color:var(--text);margin-top:8px"><input type="checkbox" id="s-tips" style="width:auto"> Show tips during calls</label>
+    <label class="row small" style="color:var(--text);margin-top:18px"><input type="checkbox" id="s-voice-on"> Read the other person's replies out loud</label>
+    <label class="row small" style="color:var(--text);margin-top:8px"><input type="checkbox" id="s-tips"> Show tips during calls</label>
     <label for="s-talk">How you talk</label>
     <select id="s-talk">
       <option value="auto">Automatic: hands-free on phones, hold to talk on computers</option>
@@ -262,7 +262,7 @@
         <option value="medium">Standard</option>
         <option value="high">Deep: more thorough review, costs a bit more</option>
       </select>
-      <label class="row small" style="color:var(--text)"><input type="checkbox" id="s-cache" style="width:auto"> Prompt caching (recommended: same quality, much cheaper)</label>
+      <label class="row small" style="color:var(--text)"><input type="checkbox" id="s-cache"> Prompt caching (recommended: same quality, much cheaper)</label>
     </details>
     <datalist id="model-list">
       <option value="claude-sonnet-5-5">
@@ -275,7 +275,7 @@
       <span class="small muted" id="s-account"></span>
       <button class="btn" id="s-signout">Sign out</button>
     </div>
-    <button class="btn" id="s-clear" style="color:var(--red);margin-top:14px">Clear history</button>
+    <button class="btn" id="s-clear" style="color:var(--red-text);margin-top:var(--s-4)">Clear history</button>
     </details>
     <div class="row" style="margin-top:20px">
       <button class="btn primary" id="s-save">Save</button>
@@ -289,6 +289,7 @@
 <script src="data/industries.js"></script>
 <script src="data/personalities.js"></script>
 <script src="js/core.js"></script>
+<script src="js/icons.js"></script>
 <script src="js/state.js"></script>
 <script src="js/ai.js"></script>
 <script src="js/prompts.js"></script>

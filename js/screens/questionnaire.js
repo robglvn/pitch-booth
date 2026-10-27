@@ -59,7 +59,7 @@ const Q_STEPS = [
   {
     title: 'Who do you <em>sell to</em>?', lead: 'The people you call will be built from this.',
     body: () => `
-      <div class="choices two-up">${[['people', '👪', 'People & families', 'Homeowners, parents, retirees…'], ['businesses', '🏪', 'Businesses', 'Owners, managers, buyers…']].map(([k, e, t, d]) =>
+      <div class="choices two-up">${[['people', icon('people', 22), 'People & families', 'Homeowners, parents, retirees…'], ['businesses', icon('store', 22), 'Businesses', 'Owners, managers, buyers…']].map(([k, e, t, d]) =>
         `<button type="button" class="choice ${q.audience === k ? 'on' : ''}" data-pick="audience" data-v="${k}"><span class="e">${e}</span><b>${t}</b><span>${d}</span></button>`).join('')}</div>
       <label for="q-customer">Describe your ideal customer</label>
       <input id="q-customer" data-k="customer" maxlength="200" placeholder="${esc((CATEGORIES[q.category] || CATEGORIES.other).customer)}" value="${esc(q.customer)}">`,
@@ -71,7 +71,7 @@ const Q_STEPS = [
     check: () => !q.callTypes.length && 'Pick at least one kind of call.',
     body: () => `
       <div class="choices two-up">${Object.entries(CALL_TYPES).map(([k, a]) =>
-        `<button type="button" class="choice ${q.callTypes.includes(k) ? 'on' : ''}" data-toggle="callTypes" data-v="${k}" aria-pressed="${q.callTypes.includes(k)}"><span class="e">${a.emoji}</span><b>${a.label}</b><span>${a.desc}</span></button>`).join('')}</div>
+        `<button type="button" class="choice ${q.callTypes.includes(k) ? 'on' : ''}" data-toggle="callTypes" data-v="${k}" aria-pressed="${q.callTypes.includes(k)}"><span class="e">${icon(a.icon, 22)}</span><b>${a.label}</b><span>${a.desc}</span></button>`).join('')}</div>
       <label for="q-goal">What do you ask for at the end of a call?</label>
       <input id="q-goal" data-k="goal" maxlength="160" placeholder="e.g. Book a 20-minute call" value="${esc(q.goal)}">
       <div class="chips small-chips">${(CATEGORIES[q.category] || CATEGORIES.other).goals.map(g => `<button type="button" class="chip" data-fill="goal" data-v="${esc(g)}">${esc(g)}</button>`).join('')}</div>`,

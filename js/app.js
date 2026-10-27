@@ -31,4 +31,5 @@ async function init() {
     else showError(e.message);
   }
 }
+hydrateIcons();
 init();

@@ -27,6 +27,7 @@ data/                   ← edit these to change who people practice with
 
 js/                     loaded in this order (see the bottom of index.html)
   core.js               shared helpers and screen switching
+  icons.js              the line icons (phone, star, settings…) used on buttons and cards
   state.js              settings, call history, invite links, the person's profile
   ai.js                 talking to Claude, friendly error messages
   prompts.js            ← every instruction the AI gets (building the person, playing them, coaching)
@@ -62,7 +63,8 @@ The `js/` files share one global scope and must load in the order listed at the 
 | Change how the AI customer behaves | `js/prompts.js` → `personaSystemPrompt` |
 | Change how people are invented | `js/prompts.js` → `personaBuilderPrompt` |
 | Change how calls are graded | `js/prompts.js` → `coachPrompt` and `GRADE_SCHEMA` |
-| Change colors, fonts, or spacing | `css/tokens.css` |
+| Change colors, text sizes, or spacing | `css/tokens.css` (sizes and spacing are a scale; every screen uses it) |
+| Add or change an icon | `js/icons.js` |
 
 ## How a call works
 

@@ -43,7 +43,7 @@ async function quickStart(text, errEl, btn) {
   text = text.trim();
   if (text.split(/\s+/).length < 3) { errEl.textContent = 'Say a little about what you sell, like "I sell life insurance to young families."'; return; }
   errEl.textContent = '';
-  const label = btn.textContent;
+  const label = btn.innerHTML;
   btn.disabled = true; btn.textContent = 'Setting up…';
   try {
     if (!settings.inviteCode && !settings.apiKey) {
@@ -59,7 +59,7 @@ async function quickStart(text, errEl, btn) {
   } catch (e) {
     errEl.textContent = e.message;
   } finally {
-    btn.disabled = false; btn.textContent = label;
+    btn.disabled = false; btn.innerHTML = label;
   }
 }
 $('w-quick-go').onclick = () => quickStart($('w-quick').value, $('w-quick-err'), $('w-quick-go'));

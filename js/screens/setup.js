@@ -22,7 +22,7 @@ function openSetup(mode) {
 function renderDifficulty() {
   document.querySelectorAll('#setup-difficulty button').forEach(b => {
     b.classList.toggle('on', b.dataset.d === setupDifficulty);
-    if (b.dataset.d === 'brutal') { b.disabled = !brutalUnlocked(); b.textContent = brutalUnlocked() ? 'Brutal' : '🔒 Brutal'; }
+    if (b.dataset.d === 'brutal') { b.disabled = !brutalUnlocked(); b.innerHTML = brutalUnlocked() ? 'Brutal' : `${icon('lock', 16)} Brutal`; }
   });
   $('setup-brutal-note').textContent = brutalUnlocked() ? '' : `Brutal unlocks after ${BRUTAL_UNLOCK} completed calls (${completedCount()}/${BRUTAL_UNLOCK}).`;
 }
