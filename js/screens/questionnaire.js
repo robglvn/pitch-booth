@@ -7,7 +7,9 @@ const EXPERIENCE = { new: 'New to sales', some: 'Under 2 years', pro: '2+ years'
 
 const seller = () => settings.seller || {};
 // People who haven't answered the questions yet get the original video-pitch setup.
-const sellerCat = () => CATEGORIES[seller().category] || (seller().offer ? CATEGORIES.other : CATEGORIES.marketing);
+// A "Write your own" industry carries its own customer types and objections (customPack), drafted by Claude.
+const withPack = (category, pack) => (category === 'other' && pack ? { ...CATEGORIES.other, ...pack } : CATEGORIES[category]);
+const sellerCat = () => withPack(seller().category, seller().customPack) || (seller().offer ? CATEGORIES.other : CATEGORIES.marketing);
 const sellerAudience = () => seller().audience || '';
 const offerName = () => seller().offer || 'their product or service';
 const goalText = () => seller().goal || 'a meeting or next step';
@@ -18,7 +20,7 @@ const userCallTypes = () => (seller().callTypes?.length ? seller().callTypes : s
 function compileBrief(s) {
   const cat = CATEGORIES[s.category];
   const lines = [
-    `I sell: ${s.offer}${s.company ? ` (company: ${s.company})` : ''}${cat && s.category !== 'other' ? `, in ${cat.label.toLowerCase()}` : ''}.`,
+    `I sell: ${s.offer}${s.company ? ` (company: ${s.company})` : ''}${cat && s.category !== 'other' ? `, in ${cat.label.toLowerCase()}` : s.customPack?.label ? `, in ${s.customPack.label.toLowerCase()}` : ''}.`,
     s.audience && `I sell to: ${s.audience === 'people' ? 'individuals and families' : 'businesses'}${s.customer ? ` — ${s.customer}` : ''}.`,
     !s.audience && s.customer && `My customers: ${s.customer}.`,
     s.callTypes?.length && `Calls I make: ${s.callTypes.map(k => CALL_TYPES[k].label.toLowerCase()).join(', ')}.`,
@@ -33,6 +35,7 @@ function compileBrief(s) {
 }
 
 let q = null; // answers being edited
+const qCat = () => withPack(q.category, q.customPack) || CATEGORIES.other;
 const Q_STEPS = [
   {
     title: 'Nice to <em>meet you</em>', lead: 'A few quick questions so your practice calls feel like your real ones.',
@@ -51,7 +54,7 @@ const Q_STEPS = [
       <div class="choices cats" role="radiogroup" aria-label="Industry">${Object.entries(CATEGORIES).map(([k, c]) =>
         `<button type="button" class="choice ${q.category === k ? 'on' : ''}" data-pick="category" data-v="${k}" role="radio" aria-checked="${q.category === k}"><b>${c.emoji} ${esc(c.label)}</b><span>${esc(c.examples)}</span></button>`).join('')}</div>
       <label for="q-offer">In one sentence, what do you offer?</label>
-      <input id="q-offer" data-k="offer" maxlength="200" placeholder="${esc((CATEGORIES[q.category] || CATEGORIES.other).offer)}" value="${esc(q.offer)}">
+      <input id="q-offer" data-k="offer" maxlength="200" placeholder="${esc(qCat().offer)}" value="${esc(q.offer)}">
       <label for="q-company">Company name <span style="color:var(--dim)">(optional)</span></label>
       <input id="q-company" data-k="company" maxlength="80" placeholder="e.g. Northstar Life" value="${esc(q.company)}">`,
     check: () => (!q.category && 'Pick the closest fit.') || (!q.offer.trim() && 'Say what you offer in a sentence.'),
@@ -62,27 +65,27 @@ const Q_STEPS = [
       <div class="choices two-up">${[['people', icon('people', 22), 'People & families', 'Homeowners, parents, retirees…'], ['businesses', icon('store', 22), 'Businesses', 'Owners, managers, buyers…']].map(([k, e, t, d]) =>
         `<button type="button" class="choice ${q.audience === k ? 'on' : ''}" data-pick="audience" data-v="${k}"><span class="e">${e}</span><b>${t}</b><span>${d}</span></button>`).join('')}</div>
       <label for="q-customer">Describe your ideal customer</label>
-      <input id="q-customer" data-k="customer" maxlength="200" placeholder="${esc((CATEGORIES[q.category] || CATEGORIES.other).customer)}" value="${esc(q.customer)}">`,
+      <input id="q-customer" data-k="customer" maxlength="200" placeholder="${esc(qCat().customer)}" value="${esc(q.customer)}">`,
     check: () => !q.audience && 'Pick people or businesses.',
   },
   {
     title: 'Which calls do you <em>make</em>?', lead: "Pick all that apply. These become your practice options.",
-    enter: () => { if (!q.callTypes.length) q.callTypes = [...(CATEGORIES[q.category] || CATEGORIES.other).calls]; },
+    enter: () => { if (!q.callTypes.length) q.callTypes = [...qCat().calls]; },
     check: () => !q.callTypes.length && 'Pick at least one kind of call.',
     body: () => `
       <div class="choices two-up">${Object.entries(CALL_TYPES).map(([k, a]) =>
         `<button type="button" class="choice ${q.callTypes.includes(k) ? 'on' : ''}" data-toggle="callTypes" data-v="${k}" aria-pressed="${q.callTypes.includes(k)}"><span class="e">${icon(a.icon, 22)}</span><b>${a.label}</b><span>${a.desc}</span></button>`).join('')}</div>
       <label for="q-goal">What do you ask for at the end of a call?</label>
       <input id="q-goal" data-k="goal" maxlength="160" placeholder="e.g. Book a 20-minute call" value="${esc(q.goal)}">
-      <div class="chips small-chips">${(CATEGORIES[q.category] || CATEGORIES.other).goals.map(g => `<button type="button" class="chip" data-fill="goal" data-v="${esc(g)}">${esc(g)}</button>`).join('')}</div>`,
+      <div class="chips small-chips">${qCat().goals.map(g => `<button type="button" class="chip" data-fill="goal" data-v="${esc(g)}">${esc(g)}</button>`).join('')}</div>`,
   },
   {
     title: 'What makes you <em>stand out</em>?', lead: 'The coach checks whether you get this across.',
     body: () => `
       <label for="q-edge" style="margin-top:0">Why should someone pick you?</label>
-      <textarea id="q-edge" data-k="edge" rows="3" maxlength="400" placeholder="${esc((CATEGORIES[q.category] || CATEGORIES.other).edge)}">${esc(q.edge)}</textarea>
+      <textarea id="q-edge" data-k="edge" rows="3" maxlength="400" placeholder="${esc(qCat().edge)}">${esc(q.edge)}</textarea>
       <label for="q-price">What does it usually cost? <span style="color:var(--dim)">(optional)</span></label>
-      <input id="q-price" data-k="price" maxlength="120" placeholder="${esc((CATEGORIES[q.category] || CATEGORIES.other).price)}" value="${esc(q.price)}">
+      <input id="q-price" data-k="price" maxlength="120" placeholder="${esc(qCat().price)}" value="${esc(q.price)}">
       <label for="q-promo">Running a special or promotion right now? <span style="color:var(--dim)">(optional)</span></label>
       <input id="q-promo" data-k="promo" maxlength="200" placeholder="e.g. 20% off the first visit for new customers through November" value="${esc(q.promo)}">
       <div class="small muted" style="margin-top:4px">The people you call will react to it, and the coach checks how well you use it.</div>`,
@@ -90,7 +93,7 @@ const Q_STEPS = [
   {
     title: 'What do people <em>push back</em> with?', lead: 'Pick the ones you hear most. Your practice calls will throw them at you.',
     body: () => {
-      const all = [...new Set([...(CATEGORIES[q.category] || CATEGORIES.other).objections, ...q.objections])];
+      const all = [...new Set([...qCat().objections, ...q.objections])];
       return `
       <div class="chips">${all.map(o => `<button type="button" class="chip ${q.objections.includes(o) ? 'on' : ''}" data-toggle="objections" data-v="${esc(o)}" aria-pressed="${q.objections.includes(o)}">${esc(o)}</button>`).join('')}</div>
       <div class="row" style="flex-wrap:nowrap;margin-top:10px">
@@ -117,11 +120,17 @@ function openQuestionnaire(newCode = '') {
     category: s.category || '', offer: s.offer || '', company: s.company || '', audience: s.audience || '', customer: s.customer || '',
     callTypes: [...(s.callTypes || [])], goal: s.goal || '', edge: s.edge || '', price: s.price || '', promo: s.promo || '',
     objections: [...(s.objections || [])], experience: s.experience || '', brief: '',
+    customPack: s.customPack || null, customPackFor: s.customPack ? s.offer : '',
   };
   // Someone who already wrote a free-text pitch keeps it as a starting point for the offer.
   if (!q.offer && settings.pitch && settings.pitch !== DEFAULT_SETTINGS.pitch) q.offer = settings.pitch.split('\n')[0].slice(0, 200);
+  resumeQuestionnaire();
+}
+
+// Shows the questions again where they left off (after setting up a "Write your own" industry, for one).
+function resumeQuestionnaire() {
   show('welcome');
-  $('w-join').classList.add('hidden');
+  ['w-join', 'w-quick-panel', 'w-draft'].forEach(id => $(id).classList.add('hidden'));
   $('w-about').classList.remove('hidden');
   renderQ();
 }
@@ -141,6 +150,7 @@ function renderQ() {
   $('q-body').querySelectorAll('[data-pick]').forEach(b => b.onclick = () => {
     q[b.dataset.pick] = b.dataset.v;
     if (b.dataset.pick === 'category' && !q.audience) q.audience = CATEGORIES[b.dataset.v].audience;
+    if (b.dataset.pick === 'category' && b.dataset.v !== 'other') q.customPack = null;
     renderQ();
   });
   $('q-body').querySelectorAll('[data-toggle]').forEach(b => b.onclick = () => {
@@ -164,6 +174,21 @@ $('q-back').onclick = () => { if (q.step > 0) { q.step--; renderQ(); } };
 $('q-next').onclick = async () => {
   const err = Q_STEPS[q.step].check?.();
   if (err) { $('p-err').textContent = err; return; }
+  // "Write your own": have Claude draft the industry from their offer, and let them confirm it, before going on.
+  if (q.step === 1 && q.category === 'other' && (!q.customPack || q.customPackFor !== q.offer.trim())) {
+    const offer = q.offer.trim();
+    openDraft({
+      offer,
+      onDone: pack => {
+        q.customPack = pack; q.customPackFor = offer;
+        q.audience = q.audience || pack.audience; q.customer = q.customer || pack.customer;
+        q.callTypes = []; q.objections = [...pack.objections];
+        q.step = 2; resumeQuestionnaire();
+      },
+      onBack: resumeQuestionnaire,
+    });
+    return;
+  }
   if (q.step < Q_STEPS.length - 1) { q.step++; renderQ(); window.scrollTo(0, 0); return; }
   const { step, newCode, name, city, brief, ...answers } = q;
   answers.offer = answers.offer.trim();

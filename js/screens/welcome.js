@@ -7,6 +7,7 @@ function showWelcome(step, err = '', newCode = '') {
   $('w-join').classList.toggle('hidden', step !== 'join');
   $('w-about').classList.toggle('hidden', step !== 'about');
   $('w-quick-panel').classList.toggle('hidden', step !== 'quick');
+  $('w-draft').classList.add('hidden');
   if (step === 'join') {
     $('w-err').textContent = err;
     checkQuickStart();
@@ -52,6 +53,16 @@ async function quickStart(text, errEl, btn) {
     }
     if (usingProxy() && !profile) await loadProfile();
     const category = guessCategory(text);
+    // Not one of the built-in industries: Claude drafts it and they confirm before the first call.
+    if (!category) {
+      const back = currentView === 'welcome' && !$('w-quick-panel').classList.contains('hidden') ? 'quick' : 'join';
+      openDraft({
+        offer: text, quick: true,
+        onDone: pack => saveSeller(customSeller(text, pack)).then(() => startCall(buildConfig('random'))).catch(e => showError(e.message)),
+        onBack: () => showWelcome(back),
+      });
+      return;
+    }
     settings = { ...settings, pitch: text, seller: { offer: text.slice(0, 200), category, audience: CATEGORIES[category]?.audience || '', quick: true } };
     LS.set('ph_settings', settings);
     if (usingProxy()) await saveProfile();

@@ -84,6 +84,17 @@
       </div>
       <p style="text-align:center;margin-top:14px"><button type="button" class="linkish" id="q-quick-back">Answer the full questions instead</button></p>
     </div>
+    <div class="welcome hidden" id="w-draft">
+      <h1 id="d-title"></h1>
+      <p class="lead" id="d-lead"></p>
+      <div class="card" id="d-body"></div>
+      <div class="w-err" id="d-err"></div>
+      <div class="q-nav hidden" id="d-nav">
+        <button class="btn" id="d-back">Back</button>
+        <button class="btn" id="d-retry">Try again</button>
+        <button class="btn primary" id="d-ok">Yes, this is right</button>
+      </div>
+    </div>
     <div class="welcome hidden" id="w-about">
       <div class="q-top"><span class="small muted" id="q-count"></span><div class="q-progress"><div class="q-bar" id="q-bar"></div></div></div>
       <h1 id="q-title"></h1>
@@ -328,6 +339,7 @@
 <script src="js/screens/settings.js"></script>
 <script src="js/screens/welcome.js"></script>
 <script src="js/screens/questionnaire.js"></script>
+<script src="js/screens/draft.js"></script>
 <script src="js/screens/industry.js"></script>
 <script src="js/app.js"></script>
 </body>

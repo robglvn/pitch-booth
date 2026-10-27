@@ -30,12 +30,14 @@ js/                     loaded in this order (see the bottom of index.html)
   icons.js              the line icons (phone, star, settings…) used on buttons and cards
   state.js              settings, call history, invite links, the person's profile
   ai.js                 talking to Claude, friendly error messages
-  prompts.js            ← every instruction the AI gets (building the person, playing them, coaching)
+  prompts.js            ← every instruction the AI gets (building the person, playing them, coaching,
+                        and drafting a custom industry)
   voice.js              how the other person sounds (ElevenLabs, browser voices) and the ring tone
   call.js               the call: building the person, Get ready screen, dialing, each turn
   talk.js               the microphone: hold to talk, or hands-free
   grading.js            ending a call and getting the score
-  screens/              scorecard, home, setup, settings, welcome, questionnaire, industry (the "Change" picker)
+  screens/              scorecard, home, setup, settings, welcome, questionnaire, industry (the "Change" picker),
+                        draft ("Write your own": Claude drafts an industry, the person confirms it)
   app.js                browser checks and startup (loaded last)
 
 api/                    serverless functions (Vercel)
@@ -56,13 +58,14 @@ The `js/` files share one global scope and must load in the order listed at the 
 
 | I want to… | Edit |
 |---|---|
-| Add an industry | `data/industries.js` — copy an entry, change the words |
+| Add an industry | `data/industries.js` — copy an entry, change the words. (People can also "Write your own": Claude drafts one just for them.) |
 | Add customer types or objections | `data/industries.js`, in that industry's `types` / `objections` |
 | Add personality traits or make some rarer | `data/personalities.js` (instructions at the top) |
 | Change how the call types work | `data/call-types.js` |
 | Change how the AI customer behaves | `js/prompts.js` → `personaSystemPrompt` |
 | Change how people are invented | `js/prompts.js` → `personaBuilderPrompt` |
 | Change how calls are graded | `js/prompts.js` → `coachPrompt` and `GRADE_SCHEMA` |
+| Change how custom industries are drafted | `js/prompts.js` → `industryDraftPrompt` and `INDUSTRY_SCHEMA` |
 | Change colors, text sizes, or spacing | `css/tokens.css` (sizes and spacing are a scale; every screen uses it) |
 | Add or change an icon | `js/icons.js` |
 

@@ -229,12 +229,12 @@ window.PB_INDUSTRIES = {
     ],
   },
   other: {
-    label: 'Something else', emoji: '✨', examples: 'Anything not listed', audience: '',
+    label: 'Write your own', emoji: '✏️', examples: "Not listed? Describe it and we'll set it up", audience: '',
     calls: ['cold', 'interested', 'followup', 'past'],
     offer: 'e.g. What you sell, in plain words', customer: 'e.g. Who usually buys from you',
     edge: 'e.g. The one reason people pick you over the alternatives', price: 'e.g. Typical price or package',
     goals: ['Book a meeting', 'Schedule a call back', 'Close the sale'],
     objections: ["It's too expensive", 'Just send me an email', "I don't have time for this", 'I need to think about it', 'I need to ask my partner first', 'Not interested'],
-    types: [], // The AI invents customer types from the person's own answers.
+    types: [], // "Write your own" asks Claude to draft types, objections and goals; the person confirms them (js/screens/draft.js).
   },
 };

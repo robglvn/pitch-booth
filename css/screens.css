@@ -178,6 +178,20 @@ details summary:hover { color: var(--text); }
 .choice b { font-size: var(--fs-base); }
 .choice span:last-child { font-size: var(--fs-xs); color: var(--muted); line-height: 1.4; }
 
+/* ---------- Write your own industry ---------- */
+#w-draft { max-width: 620px; }
+.draft-sum { display: grid; gap: var(--s-3); }
+.draft-sum > div { display: grid; grid-template-columns: 110px 1fr; gap: var(--s-3); align-items: center; }
+.draft-sum b { font-weight: 600; }
+.draft-h { font-size: var(--fs-base); font-weight: 600; margin: var(--s-8) 0 var(--s-3); }
+.draft-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-2); }
+.draft-list li { display: flex; gap: var(--s-3); align-items: flex-start; justify-content: space-between; padding: var(--s-3) var(--s-4); border-radius: var(--radius-sm); background: var(--panel-solid); border: 1px solid var(--border); }
+.draft-list li div { display: flex; flex-direction: column; gap: 2px; }
+.draft-list li span { font-size: var(--fs-sm); color: var(--muted); }
+.draft-x { flex: none; min-height: var(--h-sm); background: none; border: 0; color: var(--red-text); font-size: var(--fs-sm); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.draft-add { margin-top: var(--s-3); flex-wrap: nowrap; }
+.draft-add input { flex: 1; min-width: 0; }
+
 /* ---------- Settings window ---------- */
 .presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-2); }
 .presets button { text-align: left; background: var(--panel-solid); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: var(--s-3); display: flex; flex-direction: column; gap: var(--s-1); transition: border-color .15s, background .15s; }
@@ -227,6 +241,7 @@ details summary:hover { color: var(--text); }
   .start-text b { font-size: var(--fs-xl); }
   .start-arrow { display: none; }
   .industry-line .ind-offer { flex-basis: 100%; }
+  .draft-sum > div { grid-template-columns: 1fr; gap: var(--s-1); }
   .industry-line .ind-offer::before { content: none; }
 }
 @media (prefers-reduced-motion: reduce) {

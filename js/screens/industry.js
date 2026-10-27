@@ -34,17 +34,40 @@ async function saveIndustry() {
   if (!pickedIndustry) { $('ind-err').textContent = 'Pick the closest fit.'; return; }
   if (!offer) { $('ind-err').textContent = 'Say what you offer in a sentence.'; $('ind-offer').focus(); return; }
   const prev = seller();
+  // "Write your own": Claude drafts it, they confirm, then it's saved.
+  if (pickedIndustry === 'other' && !(prev.category === 'other' && prev.customPack && prev.offer === offer)) {
+    closeIndustryPicker();
+    openDraft({
+      offer,
+      onDone: pack => saveSeller(customSeller(offer, pack, prev)).then(() => show('home')).catch(e => showError(e.message)),
+      onBack: () => { show('home'); openIndustryPicker(); },
+    });
+    return;
+  }
   const same = prev.category === pickedIndustry;
   const next = same ? { ...prev, offer } : {
     category: pickedIndustry, offer, audience: CATEGORIES[pickedIndustry].audience || prev.audience || '',
     ...(prev.experience ? { experience: prev.experience } : {}), quick: true,
   };
-  settings = { ...settings, seller: next, pitch: compileBrief(next) };
-  LS.set('ph_settings', settings);
   $('ind-save').disabled = true;
-  try { if (usingProxy()) await saveProfile(); closeIndustryPicker(); renderHome(); }
+  try { await saveSeller(next); closeIndustryPicker(); renderHome(); }
   catch (e) { $('ind-err').textContent = e.message; }
   $('ind-save').disabled = false;
+}
+
+// Saves what-you-sell answers and the brief built from them, locally and to the profile.
+async function saveSeller(next) {
+  settings = { ...settings, seller: next, pitch: compileBrief(next) };
+  LS.set('ph_settings', settings);
+  if (usingProxy()) await saveProfile();
+}
+
+// A "Write your own" seller: their offer plus the confirmed draft. Keeps experience from before.
+function customSeller(offer, pack, prev = {}) {
+  return {
+    category: 'other', offer: offer.slice(0, 200), audience: pack.audience, customer: pack.customer, customPack: pack,
+    ...(prev.experience ? { experience: prev.experience } : {}), quick: true,
+  };
 }
 
 $('home-industry').onclick = openIndustryPicker;

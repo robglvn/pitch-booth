@@ -200,3 +200,30 @@ TRANSCRIPT (from speech recognition; ignore small transcription errors)
 ${transcriptText(c)}`;
   return { system, user };
 }
+
+/* ---------- 4. setting up a custom industry ("Write your own") ---------- */
+// Drafts the same ingredients a built-in industry has in data/industries.js, from the person's own words.
+// The person reviews and edits the draft before it's used.
+const INDUSTRY_SCHEMA = obj({
+  clear: { type: 'boolean', description: 'true if the description says clearly enough what they sell and to whom; false if it is too vague to set up' },
+  question: str('If clear is false: one short, friendly question that would make it clear. Otherwise empty string.'),
+  label: str('Short name for what they sell, 1–4 words, e.g. "Dog training" or "Commercial drone surveys"'),
+  audience: enm(['people', 'businesses'], 'Who usually buys: individuals and families, or businesses'),
+  customer: str('Their typical customer in one short phrase, e.g. "New puppy owners in the suburbs"'),
+  types: { type: 'array', description: 'Exactly 6 distinct kinds of real customers they will meet', items: obj({ label: str('Short name, 2–4 words'), desc: str("One sentence: who they are and what's really going on with them") }) },
+  objections: { type: 'array', description: 'Exactly 6 real objections for this business, in the customer’s own words', items: str('An objection') },
+  goals: { type: 'array', description: 'Exactly 3 concrete next steps a salesperson in this business asks for', items: str('A next step') },
+  calls: { type: 'array', description: 'Which kinds of call are realistic for this business', items: enm(Object.keys(CALL_TYPES), 'A call type') },
+});
+
+function industryDraftPrompt(description, note, previous) {
+  const system = `You set up a sales-call practice app for one salesperson. From their description, work out what they sell and who buys it, then draft what the app needs to invent realistic practice calls for them:
+- types: six clearly different kinds of real customer they will meet, each with what's actually going on (situation, worry, or attitude). Mix easy and hard ones. Make them specific to this business, not generic sales personas.
+- objections: six real things their customers say, in plain spoken words.
+- goals: three concrete next steps they would ask for at the end of a call.
+- calls: which of these are realistic for them: cold (calling someone who has never heard of them), interested (someone who asked for info), followup (someone who said they'd think about it), past (a past customer). Skip cold calls for businesses where nobody cold calls.
+
+Keep everything true to what they described. Don't invent a different business. If you can't tell what they sell or who buys it, set clear to false and ask one short question instead (still fill the other fields with your best guess).`;
+  const user = `What they sell, in their words: ${description}${note ? `\n\nTheir correction to your last draft: ${note}` : ''}${previous ? `\n\nYour last draft, for reference: ${JSON.stringify({ label: previous.label, customer: previous.customer, types: previous.types.map(t => t.label) })}` : ''}`;
+  return { system, user };
+}
