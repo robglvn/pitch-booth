@@ -67,7 +67,7 @@ const Q_STEPS = [
       <label for="q-offer">What do you sell? <span style="color:var(--dim)">Say it your way</span></label>
       <input id="q-offer" data-k="offer" maxlength="200" placeholder="${esc(q.category === 'other' ? 'e.g. I train dogs and run puppy classes' : qCat().offer)}" value="${esc(q.offer)}">
       <label for="q-company">Company name <span style="color:var(--dim)">(optional)</span></label>
-      <input id="q-company" data-k="company" maxlength="80" placeholder="e.g. Galvan Media" value="${esc(q.company)}">`,
+      <input id="q-company" data-k="company" maxlength="80" placeholder="e.g. Bright Lane Media" value="${esc(q.company)}">`,
     check: () => (!q.category && 'Pick the closest fit.') || (!q.offer.trim() && 'Say what you offer in a sentence.'),
   },
   {
