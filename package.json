@@ -2,8 +2,13 @@
   "name": "pitch-booth",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0"
+  },
+  "scripts": {
+    "test": "node tests/proxy.test.mjs"
   }
 }

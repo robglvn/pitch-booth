@@ -24,6 +24,7 @@ data/                   ← edit these to change who people practice with
   professions.js        ~370 jobs people search for ("Videographer", "Barber"…), each pointing to a group below
   industries.js         the 20 groups: examples, objections, customer types
   call-types.js         cold call, interested lead, follow-up, past customer
+  call-flow.js          the call-flow checklist phases and the Cold-to-Sold moods
   personalities.js      personality traits, how common each is, rules, presets, backgrounds
   business-types.js     kinds of business and owner types, for people who call business owners
   company-names.js      words for the made-up example in the company box ("Cedar Hill Barbershop")
@@ -45,14 +46,16 @@ js/                     loaded in this order (see the bottom of index.html)
   app.js                browser checks and startup (loaded last)
 
 api/                    serverless functions (Vercel)
-  claude.js             forwards AI requests with the server's API key and logs usage
+  claude.js             builds every AI request on the server (see "How the AI requests are protected") and logs usage
   voice.js              turns a reply into speech through ElevenLabs
   join.js               invite codes, the universal code, and quick start
   me.js                 the person's profile
   calls.js              saved calls
   admin/                admin page data, invites (and emailing them), settings
 
-lib/                    shared server code: database, HTTP helpers, email, voice, prices
+lib/                    shared server code: database, HTTP helpers, email, voice, prices, shared.js (loads data/ and js/prompts.js on the server)
+
+tests/                  npm test: checks the AI request protections with a stand-in database
 ```
 
 The `js/` files share one global scope and must load in the order listed at the bottom of
@@ -85,6 +88,15 @@ The `js/` files share one global scope and must load in the order listed at the 
    said (for the call-flow checklist). Replies are spoken by ElevenLabs, or the browser's voice.
 4. **The coach.** The transcript goes to Claude as a coach (`coachPrompt`), which returns scores and feedback.
 
+## How the AI requests are protected
+
+Invited people never send instructions to the AI. The app sends `/api/claude` a role (`persona`, `owner`, `coach`,
+or `draft`) and the facts of the call; the server builds the prompt itself from the person's saved profile and the
+same `js/prompts.js` the browser uses. The person built for each call is stored on the server (the `sessions` table),
+so later turns can't swap it out. Only Haiku and Sonnet are allowed, each role has a size cap, and each person stops
+at a daily request count and a daily estimated cost. People who use their own Anthropic key talk to Anthropic
+directly and pay for it themselves.
+
 ## Setup (Vercel)
 
 Environment variables:
@@ -99,6 +111,7 @@ Environment variables:
 | `RESEND_API_KEY`, `INVITE_FROM` | emailing invites (optional) |
 | `APP_URL` | optional, the site address used in invite emails |
 | `DAILY_LIMIT` | optional, AI requests per person per day (default 250) |
+| `DAILY_COST_LIMIT` | optional, estimated dollars of AI per person per day (default 2) |
 | `UNIVERSAL_DAILY_JOINS` | optional, new profiles per day via the universal code or quick start (default 25) |
 
 Database tables are created automatically on the first request. After changing environment

@@ -1,15 +1,44 @@
-// Pitch Booth — Every instruction the AI gets: building the person, playing them on the call, and coaching afterwards. Edit here to change how people behave.
+// Pitch Booth — Every instruction the AI gets: building the person, playing them on the call, coaching afterwards,
+// and drafting a custom industry. Edit here to change how people behave.
+//
+// This file is shared: the browser loads it, and the server (lib/shared.js) loads the same file so that for invited
+// people the server builds every prompt itself from their saved profile. Nothing here may touch the page, the
+// browser's storage, or the call in progress: everything a prompt needs comes in through `cfg` and `ctx`.
+//   ctx = { seller, pitch, city, myName, recentNames }   (what they sell, from their profile)
+//   cfg = { mode, difficulty, callType, personality: { ids }, business, customerType, objection }   (this call)
 'use strict';
 
-/*
-  Three AIs work on every call, and all of their instructions are in this file:
-    1. personaBuilderPrompt  invents the person (uses data/industries.js, data/personalities.js, data/call-types.js)
-    2. personaSystemPrompt   plays that person live on the call
-    3. coachPrompt           grades the call afterwards
-  The *_SCHEMA objects are the exact fields each AI must fill in.
-*/
+window.PB_PROMPTS = (() => {
+  const CALL_TYPES = window.PB_CALL_TYPES, PERSONALITY = window.PB_PERSONALITY;
+  const INDUSTRIES = window.PB_INDUSTRIES, OWNER_TYPES = window.PB_OWNER_TYPES;
+  const PHASE_IDS = window.PB_PHASES.map(p => p.id), MOOD_IDS = Object.keys(window.PB_MOODS);
+  const obj = props => ({ type: 'object', properties: props, required: Object.keys(props), additionalProperties: false });
+  const str = description => ({ type: 'string', description });
+  const enm = (values, description) => ({ type: 'string', enum: values, description });
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  const DEFAULT_PITCH = 'They did not say what they sell. Assume a local service business.';
 
-/* ---------- 1. building the person ---------- */
+  /*
+    Shared rules about the seller, used by the browser and the server alike:
+      catFor            their industry (a custom "Write your own" one carries its own customer types)
+      customerTypesFor  who can pick up, given who they call
+      objectionsFor     the pushback to practice
+  */
+  const audienceOf = s => s.target?.audience || (s.audience === 'businesses' ? 'businesses' : 'people');
+  const offerOf = s => s.offer || 'their product or service';
+  const goalOf = s => s.goal || 'a meeting or next step';
+  const catFor = s => (s.category === 'other' && s.customPack ? { ...INDUSTRIES.other, ...s.customPack } : INDUSTRIES[s.category]) || (s.offer ? INDUSTRIES.other : INDUSTRIES.marketing);
+  // The industry's customer types when they fit who you're calling, the general owner types for businesses
+  // otherwise, and none (the AI invents them) when an industry built for one audience calls the other.
+  function customerTypesFor(s, target = { audience: audienceOf(s) }) {
+    const cat = catFor(s), fits = !cat.audience || cat.audience === target.audience;
+    if (target.audience === 'businesses') return fits && cat.types?.length ? cat.types : OWNER_TYPES;
+    return fits ? cat.types || [] : [];
+  }
+  const objectionsFor = s => (s.objections?.length ? s.objections : catFor(s).objections);
+
+  /* ---------- 1. building the person ---------- */
 const PERSONA_SCHEMA = obj({
   name: str('First and last name'),
   age: { type: 'integer' },
@@ -37,9 +66,10 @@ const PERSONA_SCHEMA = obj({
   voice_rate: { type: 'number', description: '0.85–1.15; faster for rushed people' },
 });
 
-// The instructions for building one person. Returns the system prompt and the request.
-function personaBuilderPrompt(cfg) {
-  const recentNames = history.slice(0, 12).map(h => h.persona?.name).filter(Boolean);
+
+  // The instructions for building one person. Returns the system prompt and the request.
+function personaBuilderPrompt(cfg, ctx) {
+  const s = ctx.seller || {};
   const gender = Math.random() < 0.5 ? 'female' : (Math.random() < 0.94 ? 'male' : 'nonbinary');
   const constraints = {
     call_type: CALL_TYPES[cfg.callType].label,
@@ -47,22 +77,22 @@ function personaBuilderPrompt(cfg) {
     ...(cfg.customerType ? { customer_type: `${cfg.customerType.label}: ${cfg.customerType.desc}` } : {}),
     personality_traits: PERSONALITY.describe(cfg.personality.ids),
     // A described target customer ("guys 18–40", "families, 28–45") decides gender and age; otherwise spread them out.
-    ...(seller().customer ? {} : { gender, age: 24 + Math.floor(Math.random() * 46) }),
+    ...(s.customer ? {} : { gender, age: 24 + Math.floor(Math.random() * 46) }),
     background: pick(PERSONALITY.BACKGROUNDS),
     political_cultural_lean: pick(PERSONALITY.LEANS),
-    location: settings.city || 'a mid-sized US city of your choosing',
+    location: ctx.city || 'a mid-sized US city of your choosing',
     difficulty: cfg.difficulty,
     ...(cfg.objection ? { primary_objection: cfg.objection } : {}),
-    avoid_these_names: recentNames,
+    avoid_these_names: ctx.recentNames || [],
   };
-  const audience = sellerAudience();
+  const audience = audienceOf(s);
   const who = cfg.business ? `The prospect is the ${cfg.business.who}. What running that business is like: ${cfg.business.detail} The caller reaches them at work, and they hear the offer the way someone running that business would (what it means for the business, its costs, its staff, its customers).`
     : audience === 'people' ? 'The prospect is an individual, not a business, and the caller reaches them on their personal phone.'
     : audience === 'businesses' ? 'The prospect owns or makes buying decisions for a business, and the caller reaches them at work.'
     : 'Decide from the brief whether the prospect is a business decision-maker or an individual.';
   const system = `You create realistic prospects for a sales-call practice simulator. The person practicing is a salesperson. Here is what they sell, in their words:
 
-${settings.pitch}
+${ctx.pitch || DEFAULT_PITCH}
 
 Create one person this salesperson might really call: someone who fits their target customer and could plausibly need what they sell, but who isn't sold. ${who}
 
@@ -76,17 +106,19 @@ The objections should be ones this person would genuinely have, given their situ
   return { system, user: `Create one persona with these constraints:\n${JSON.stringify(constraints, null, 2)}` };
 }
 
-/* ---------- 2. playing the person on the call ---------- */
+
+  /* ---------- 2. playing the person on the call ---------- */
 const DIFFICULTY_RULES = {
   easy: "You're in a decent mood and fairly open today. Raise just one mild objection. If the caller is polite and asks a couple of real questions, you warm up quickly and are happy to agree to a next step when asked.",
   realistic: "Behave like a typical busy person: guarded at first, a bit distracted, raising your objections when they come up naturally. You warm up only when the caller earns it by asking good questions and connecting their offer to what you told them. You agree to a next step only if asked directly and you're genuinely persuaded.",
   brutal: "You're having a rough day and have little patience. If the caller rambles, cut them off mid-thought (start your reply by interrupting: \"—okay, okay, what is this?\"). Go cold suddenly if they sound scripted or waste your time. Stack objections: when one is handled, raise another. Hang up if they are pushy, ramble twice, or haven't given you a reason to stay within about a minute. Only an excellent caller gets a next step out of you.",
 };
 
-function personaSystemPrompt(p, cfg) {
+function personaSystemPrompt(p, cfg, ctx) {
+  const s = ctx.seller || {};
   const drill = cfg.mode === 'drill'
     ? `\n\nTHIS IS A SHORT CALL SEGMENT
-The caller has already introduced themselves and briefly pitched ${offerName()} before this moment. When a segment starts, speak first and raise this objection in your own words (vary the wording each time): "${cfg.objection}". Then react realistically to how they handle it. If they acknowledge it, ask about it, and reframe well, soften or agree to a next step. If they argue, ramble, or ignore it, dig in or raise another objection.`
+The caller has already introduced themselves and briefly pitched ${offerOf(s)} before this moment. When a segment starts, speak first and raise this objection in your own words (vary the wording each time): "${cfg.objection}". Then react realistically to how they handle it. If they acknowledge it, ask about it, and reframe well, soften or agree to a next step. If they argue, ramble, or ignore it, dig in or raise another objection.`
     : '';
   return `You are ${p.name}, ${p.age}, ${p.who_line} in ${p.place}. You're on a live phone call: ${CALL_TYPES[cfg.callType].opening}.
 
@@ -113,8 +145,8 @@ HOW TO TALK
 - Talk like a real person, not a script: sometimes answer a question with a question, go on a short tangent if it fits your personality, mishear, or trail off. Never repeat the same phrasing or the same objection word-for-word.
 - Your mood moves gradually. A good question warms you up a little; a canned line or a pitch you didn't ask for cools you down. You don't flip from cold to sold in one line.
 - If the caller starts pitching before they understand your situation, react the way you would. Your tendency, described from the outside: ${PERSONALITY.option('early_pitch', cfg.personality.ids.early_pitch)?.desc || 'stays noncommittal until they feel understood'}. Say it in your own words every time, and never fall back on stock lines like "you don't even know what I need." The call notes tell you how many real questions they've asked so far.
-- If the caller directly asks for a commitment or next step and has earned it, you can agree to something concrete (like: ${goalText()}). Otherwise, give your real hesitation.
-${seller().promo ? `- The caller is running a special right now: "${seller().promo}". You don't know about it unless they bring it up. If they do, react like a real person: it can make you more interested, but a discount alone doesn't fix a real objection.\n` : ''}- Difficulty: ${DIFFICULTY_RULES[cfg.difficulty]}${drill}
+- If the caller directly asks for a commitment or next step and has earned it, you can agree to something concrete (like: ${goalOf(s)}). Otherwise, give your real hesitation.
+${s.promo ? `- The caller is running a special right now: "${s.promo}". You don't know about it unless they bring it up. If they do, react like a real person: it can make you more interested, but a discount alone doesn't fix a real objection.\n` : ''}- Difficulty: ${DIFFICULTY_RULES[cfg.difficulty]}${drill}
 
 STAYING IN CHARACTER
 - You are ${p.name} for the entire call. You are not an AI, a coach, or a roleplay partner, and you have no idea this is practice.
@@ -129,13 +161,14 @@ Fill the JSON fields. First classify the caller's latest line for the training s
 const TURN_SCHEMA = obj({
   caller_move: enm(['opener', 'intro', 'discovery_question', 'other_question', 'statement', 'pitch', 'objection_response', 'trial_close', 'ask_for_sale', 'small_talk', 'off_call', 'none'],
     "What the caller's latest line was. discovery_question = a real question about the prospect's situation, business, needs, goals or problems. ask_for_sale = a direct request for a commitment or concrete next step. off_call = breaking character / asking for coaching. none = no caller line yet."),
-  phase: enm(PHASES.map(p => p.id), 'Which phase of a sales call this is in now, after the caller\'s latest line'),
-  mood: enm(Object.keys(MOODS), 'How you feel about this caller right now'),
+  phase: enm(PHASE_IDS, 'Which phase of a sales call this is in now, after the caller\'s latest line'),
+  mood: enm(MOOD_IDS, 'How you feel about this caller right now'),
   say: str('What you say out loud, 1–3 short spoken sentences'),
   hang_up: { type: 'boolean' },
 });
 
-/* ---------- 3. coaching after the call ---------- */
+
+  /* ---------- 3. coaching after the call ---------- */
 const GRADE_SCHEMA = obj({
   scores: obj({
     opener: { type: 'integer', description: '1–10, or 0 if not part of this session' },
@@ -155,18 +188,20 @@ const GRADE_SCHEMA = obj({
   hidden_agenda_reveal: str("What this prospect was secretly hoping to hear and whether the caller got near it, 1–2 sentences"),
 });
 
-function transcriptText(c) {
-  const me = settings.myName || 'Caller';
+function transcriptText(c, myName) {
+  const me = myName || 'Caller';
   const other = c.persona.name.split(' ')[0];
   return c.turns.map(t => t.who === 'sys' ? `--- ${t.text} ---` : `[${fmt(t.t)}] ${t.who === 'me' ? `${me} (caller)` : `${other} (prospect)`}: ${t.text}`).join('\n');
 }
 
-// The coach's instructions and the call it reviews. Returns the system prompt and the request.
-function coachPrompt(c) {
+  // The coach's instructions and the call it reviews. Returns the system prompt and the request.
+// c: { persona, cfg, turns, discoveryCount, questionCount, statementCount, openerSecs, outcome, durationSecs }
+function coachPrompt(c, ctx) {
+  const s = ctx.seller || {}, audience = audienceOf(s);
   const p = c.persona;
   const drill = c.cfg.mode === 'drill';
-  const level = { new: 'This seller is new to sales: keep feedback encouraging and focused on one or two fundamentals.', some: 'This seller has some experience: be direct and push on technique.', pro: 'This seller is experienced: hold them to a high bar and get specific about nuance.' }[seller().experience] || '';
-  const system = `You are a blunt, warm, experienced sales coach who trains people on phone sales. This caller sells ${offerName()}${sellerAudience() ? ` to ${sellerAudience() === 'people' ? 'individuals and families' : 'businesses'}` : ''}. This was a ${CALL_TYPES[c.cfg.callType].label.toLowerCase()}: the caller's job was to ${CALL_TYPES[c.cfg.callType].goal}. Judge the call against that goal. You review practice calls and help them get better one rep at a time. ${level}${seller().promo ? `\n\nThey're running a special: "${seller().promo}". Note whether they used it well: as a reason to act now once they've built value, not as the opening line or a crutch.` : ''}
+  const level = { new: 'This seller is new to sales: keep feedback encouraging and focused on one or two fundamentals.', some: 'This seller has some experience: be direct and push on technique.', pro: 'This seller is experienced: hold them to a high bar and get specific about nuance.' }[s.experience] || '';
+  const system = `You are a blunt, warm, experienced sales coach who trains people on phone sales. This caller sells ${offerOf(s)} to ${audience === 'people' ? 'individuals and families' : 'businesses'}. This was a ${CALL_TYPES[c.cfg.callType].label.toLowerCase()}: the caller's job was to ${CALL_TYPES[c.cfg.callType].goal}. Judge the call against that goal. You review practice calls and help them get better one rep at a time. ${level}${s.promo ? `\n\nThey're running a special: "${s.promo}". Note whether they used it well: as a reason to act now once they've built value, not as the opening line or a crutch.` : ''}
 
 Grade honestly against what a strong salesperson in their field would do. Most beginner calls land between 3 and 6; reserve 8+ for genuinely skilled moments. Don't inflate scores to be nice — specific, true feedback is what helps. Be concrete: point to what they actually said.
 
@@ -177,11 +212,11 @@ What good looks like:
 - Listening: more questions than statements; follow-ups that build on the prospect's answers.
 - Pitch: tied to what the prospect said ("you mentioned…"), not a generic monologue, and gets across why to pick this seller.
 - Objection handling: acknowledge, ask about it, then answer; no arguing.
-- Close: a trial close, then a direct ask for a concrete next step${seller().goal ? ` (this seller aims for: ${seller().goal})` : ''}. Many beginners never ask — flag it clearly if they didn't.
+- Close: a trial close, then a direct ask for a concrete next step${s.goal ? ` (this seller aims for: ${s.goal})` : ''}. Many beginners never ask — flag it clearly if they didn't.
 - Rapport: genuine, adapts to the prospect's personality and values, comfortable with anyone.
 ${drill ? '\nThis was an OBJECTION DRILL: several short segments where the prospect opened with the same objection and the caller handled it. Score opener and discovery 0 (not part of the drill). Focus on objection handling across reps, and note whether they improved from rep to rep. "asked_for_sale" means they pushed for a next step in at least one rep.' : ''}`;
   const metrics = {
-    duration: fmt(elapsed()),
+    duration: fmt(c.durationSecs || 0),
     discovery_questions: c.discoveryCount,
     questions: c.questionCount,
     statements: c.statementCount,
@@ -189,7 +224,7 @@ ${drill ? '\nThis was an OBJECTION DRILL: several short segments where the prosp
     ended_by: c.outcome === 'hung_up' ? 'prospect hung up' : 'caller ended the call',
   };
   const user = `WHAT THE CALLER SELLS
-${settings.pitch}
+${ctx.pitch || DEFAULT_PITCH}
 
 THE PROSPECT (the caller didn't know any of this in advance)
 ${JSON.stringify({ name: p.name, age: p.age, who: p.who_line, situation: p.life_detail, current_solution: p.current_solution, personality: p.personality, attitude_to_sales: p.attitude_to_sales, values_texture: p.values_texture, objections: p.objections, win_condition: p.win_condition }, null, 2)}
@@ -199,13 +234,14 @@ DIFFICULTY: ${c.cfg.difficulty}
 METRICS FROM THE CALL: ${JSON.stringify(metrics)}
 
 TRANSCRIPT (from speech recognition; ignore small transcription errors)
-${transcriptText(c)}`;
+${transcriptText(c, ctx.myName)}`;
   return { system, user };
 }
 
-/* ---------- 4. setting up a custom industry ("Write your own") ---------- */
-// Drafts the same ingredients a built-in industry has in data/industries.js, from the person's own words.
-// The person reviews and edits the draft before it's used.
+
+  /* ---------- 4. setting up a custom industry ("Write your own") ---------- */
+  // Drafts the same ingredients a built-in industry has in data/industries.js, from the person's own words.
+  // The person reviews and edits the draft before it's used.
 const INDUSTRY_SCHEMA = obj({
   clear: { type: 'boolean', description: 'true if the description says clearly enough what they sell and to whom; false if it is too vague to set up' },
   question: str('If clear is false: one short, friendly question that would make it clear. Otherwise empty string.'),
@@ -229,3 +265,13 @@ Keep everything true to what they described. Don't invent a different business. 
   const user = `What they sell, in their words: ${description}${note ? `\n\nTheir correction to your last draft: ${note}` : ''}${previous ? `\n\nYour last draft, for reference: ${JSON.stringify({ label: previous.label, customer: previous.customer, types: previous.types.map(t => t.label) })}` : ''}`;
   return { system, user };
 }
+
+  return {
+    DEFAULT_PITCH, audienceOf, offerOf, goalOf, catFor, customerTypesFor, objectionsFor,
+    PERSONA_SCHEMA, personaBuilderPrompt, DIFFICULTY_RULES, personaSystemPrompt, TURN_SCHEMA,
+    GRADE_SCHEMA, transcriptText, coachPrompt, INDUSTRY_SCHEMA, industryDraftPrompt,
+  };
+})();
+
+// In the browser, the rest of the app reaches these as PROMPTS.personaBuilderPrompt(…) and so on.
+const PROMPTS = window.PB_PROMPTS;

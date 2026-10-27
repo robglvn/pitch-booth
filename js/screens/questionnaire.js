@@ -9,21 +9,14 @@ const seller = () => settings.seller || {};
 // People who haven't answered the questions yet get the original video-pitch setup.
 // A "Write your own" industry carries its own customer types and objections (customPack), drafted by Claude.
 const withPack = (category, pack) => (category === 'other' && pack ? { ...CATEGORIES.other, ...pack } : CATEGORIES[category]);
-const sellerCat = () => withPack(seller().category, seller().customPack) || (seller().offer ? CATEGORIES.other : CATEGORIES.marketing);
+// These rules are shared with the server (js/prompts.js), so both sides agree on who can pick up and what they object to.
+const sellerCat = () => PROMPTS.catFor(seller());
 // Who you're calling: people at home, or owners of one kind of business ('any' mixes the kinds up).
 const callTarget = () => seller().target || { audience: seller().audience === 'businesses' ? 'businesses' : 'people', business: 'any' };
 const sellerAudience = () => callTarget().audience;
 const targetText = t => (t.audience !== 'businesses' ? 'People & families' : BUSINESS_TYPES[t.business]?.calling || 'Business owners (any kind)');
-// Who can pick up: the industry's customer types when they fit who you're calling, the general owner types for
-// businesses otherwise, and none (the AI invents them) when an industry built for one audience calls the other.
-function customerTypesFor(target = callTarget()) {
-  const cat = sellerCat(), fits = !cat.audience || cat.audience === target.audience;
-  if (target.audience === 'businesses') return fits && cat.types?.length ? cat.types : OWNER_TYPES;
-  return fits ? cat.types || [] : [];
-}
-const offerName = () => seller().offer || 'their product or service';
-const goalText = () => seller().goal || 'a meeting or next step';
-const objectionPool = () => (seller().objections?.length ? seller().objections : sellerCat().objections);
+const customerTypesFor = (target = callTarget()) => PROMPTS.customerTypesFor(seller(), target);
+const objectionPool = () => PROMPTS.objectionsFor(seller());
 const userCallTypes = () => (seller().callTypes?.length ? seller().callTypes : sellerCat().calls).filter(k => CALL_TYPES[k]);
 
 // Turns the answers into the plain-language brief every prompt reads. People can edit it on the last step.

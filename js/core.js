@@ -12,15 +12,9 @@ const BUSINESS_TYPES = window.PB_BUSINESS_TYPES;
 const OWNER_TYPES = window.PB_OWNER_TYPES;
 // The searchable list of jobs behind "What do you do?" lives in data/professions.js.
 const PROFESSIONS = window.PB_PROFESSIONS;
-const PHASES = [
-  { id: 'opener', t: 'Opener', d: 'Permission-based, under 30 seconds', hint: 'Ask for permission: "Did I catch you at a bad time?" Keep it short.' },
-  { id: 'intro', t: 'Who I am + why I\'m calling', d: 'One breath: you, and why them', hint: 'Say who you are and why you called *them* specifically.' },
-  { id: 'discovery', t: 'Discovery', d: 'Ask before you pitch', hint: 'Ask about their situation: what\'s working, what isn\'t, what they want. Aim for 3+ questions.' },
-  { id: 'pitch', t: 'Pitch', d: 'Tied to what they said', hint: 'Start with "You mentioned…" and connect to their words, not a script.' },
-  { id: 'objection', t: 'Objection handling', d: 'Acknowledge → ask → answer', hint: 'Don\'t argue. Acknowledge it, ask a question about it, then answer.' },
-  { id: 'close', t: 'Close', d: 'Trial close, then ask', hint: 'Trial close ("Does that sound useful?"), then ask directly for the next step.' },
-];
-const MOODS = { cold: ['#b9472f', 'Cold'], guarded: ['#c98a2b', 'Guarded'], neutral: ['#a39b91', 'Neutral'], warming: ['#8fa85e', 'Warming up'], interested: ['#3f7d5c', 'Interested'], sold: ['#2f6248', 'Sold'] };
+// The call-flow phases and the Cold-to-Sold moods live in data/call-flow.js (the server reads them too).
+const PHASES = window.PB_PHASES;
+const MOODS = window.PB_MOODS;
 const SCORE_KEYS = [['opener', 'Opener'], ['discovery', 'Discovery'], ['listening', 'Listening'], ['objection_handling', 'Objection handling'], ['close_attempt', 'Close attempt'], ['rapport', 'Rapport']];
 // Shown to people; the ids (easy/realistic/brutal) stay the same in prompts and saved calls.
 const DIFFICULTY_LABELS = { easy: 'Easy', realistic: 'Realistic', brutal: 'Brutal' };

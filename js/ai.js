@@ -4,13 +4,13 @@
 /* ---------- Claude API ---------- */
 const FALLBACK_MODELS = new Set(['claude-sonnet-5-5', 'claude-opus-5-5', 'claude-opus-5', 'claude-fable-5-1']);
 const supportsEffort = m => !/haiku-4|sonnet-4-5|sonnet-4-0|opus-4-0|opus-4-1|claude-3/.test(m);
-const obj = props => ({ type: 'object', properties: props, required: Object.keys(props), additionalProperties: false });
-const str = description => ({ type: 'string', description });
-const enm = (values, description) => ({ type: 'string', enum: values, description });
 
 class FriendlyError extends Error {}
 
-async function callClaude({ model, system, messages, maxTokens = 2000, effort, schema, cache = false, track, role }) {
+// Invited people: the request carries only a role and the facts of this call (params); the server builds the
+// prompt itself (see api/claude.js). People using their own API key: the prompt is built here and sent to Anthropic.
+// Returns { json, raw, data } for schema requests.
+async function callClaude({ model, system, messages, maxTokens = 2000, effort, schema, cache = false, track, role, params = {} }) {
   const viaProxy = usingProxy();
   if (viaProxy ? !settings.inviteCode : !settings.apiKey) {
     showWelcome('join');
@@ -22,18 +22,20 @@ async function callClaude({ model, system, messages, maxTokens = 2000, effort, s
   let useCache = cache;
 
   for (let attempt = 0; attempt < 4; attempt++) {
-    const body = { model, max_tokens: maxTokens, system, messages };
+    const body = viaProxy ? { role, model, effort, cache, ...params } : { model, max_tokens: maxTokens, system, messages };
     // Automatic caching: the conversation only ever grows, so each turn re-reads the
     // previous turn's prefix from cache at ~10% of the input price.
-    if (useCache) body.cache_control = { type: 'ephemeral' };
-    const oc = {};
-    if (useEffort) oc.effort = effort;
-    if (schema) oc.format = { type: 'json_schema', schema };
-    if (Object.keys(oc).length) body.output_config = oc;
-    const headers = { 'content-type': 'application/json', 'anthropic-version': '2023-06-01' };
-    if (viaProxy) { headers['x-invite-code'] = settings.inviteCode; if (role) headers['x-ph-role'] = role; }
-    else { headers['x-api-key'] = settings.apiKey; headers['anthropic-dangerous-direct-browser-access'] = 'true'; }
-    if (useFallbacks) { body.fallbacks = 'default'; headers['anthropic-beta'] = 'server-side-fallback-2026-07-01'; }
+    const headers = { 'content-type': 'application/json' };
+    if (viaProxy) headers['x-invite-code'] = settings.inviteCode;
+    else {
+      if (useCache) body.cache_control = { type: 'ephemeral' };
+      const oc = {};
+      if (useEffort) oc.effort = effort;
+      if (schema) oc.format = { type: 'json_schema', schema };
+      if (Object.keys(oc).length) body.output_config = oc;
+      Object.assign(headers, { 'anthropic-version': '2023-06-01', 'x-api-key': settings.apiKey, 'anthropic-dangerous-direct-browser-access': 'true' });
+      if (useFallbacks) { body.fallbacks = 'default'; headers['anthropic-beta'] = 'server-side-fallback-2026-07-01'; }
+    }
 
     let res, data;
     try {
@@ -46,9 +48,9 @@ async function callClaude({ model, system, messages, maxTokens = 2000, effort, s
     if (!res.ok) {
       const msg = data?.error?.message || '';
       // Older models or accounts may not accept these optional fields; retry without them.
-      if (res.status === 400 && useFallbacks && /fallback/i.test(msg)) { useFallbacks = false; continue; }
-      if (res.status === 400 && useEffort && /effort/i.test(msg)) { useEffort = false; continue; }
-      if (res.status === 400 && useCache && /cache/i.test(msg)) { useCache = false; continue; }
+      if (!viaProxy && res.status === 400 && useFallbacks && /fallback/i.test(msg)) { useFallbacks = false; continue; }
+      if (!viaProxy && res.status === 400 && useEffort && /effort/i.test(msg)) { useEffort = false; continue; }
+      if (!viaProxy && res.status === 400 && useCache && /cache/i.test(msg)) { useCache = false; continue; }
       throw new FriendlyError(friendlyApiError(res.status, msg, model, viaProxy, data?.error?.type));
     }
     if (track) addUsage(track, model, data.usage, role);
@@ -56,7 +58,7 @@ async function callClaude({ model, system, messages, maxTokens = 2000, effort, s
     const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
     if (!schema) return text;
     try {
-      return { json: JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g, '')), raw: text };
+      return { json: JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g, '')), raw: text, data };
     } catch {
       throw new FriendlyError(data.stop_reason === 'max_tokens' ? 'The reply got cut off. Try again.' : 'Got an unreadable reply from the API. Try again.');
     }
@@ -67,7 +69,7 @@ async function callClaude({ model, system, messages, maxTokens = 2000, effort, s
 function friendlyApiError(status, msg, model, viaProxy, type) {
   if (viaProxy) {
     if (type === 'invalid_invite') return "That code didn't work. Check it for typos, or ask the person who invited you for a new one.";
-    if (type === 'daily_limit' || type === 'bad_origin' || type === 'model_not_allowed') return msg;
+    if (['daily_limit', 'session_missing', 'bad_request', 'bad_origin', 'model_not_allowed'].includes(type)) return msg;
     if (status === 401) return 'The practice server\'s API key was rejected. Let the person who invited you know.';
     if (status === 400 && /credit balance/i.test(msg)) return 'The practice server is out of API credits. Let the person who invited you know.';
   }

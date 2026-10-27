@@ -2,9 +2,24 @@
 'use strict';
 
 /* ---------- call state ---------- */
+// What the prompts need to know about the seller (people using their own key build prompts here).
+function promptCtx() {
+  return { seller: seller(), pitch: settings.pitch, city: settings.city, myName: settings.myName, recentNames: history.slice(0, 12).map(h => h.persona?.name).filter(Boolean) };
+}
+// The call's setup as the server needs it: ids and labels only, which it checks against the same data.
+const cfgForServer = cfg => ({
+  mode: cfg.mode, difficulty: cfg.difficulty, callType: cfg.callType, objection: cfg.objection,
+  personality: { ids: cfg.personality.ids }, business: cfg.business?.key || null, customerType: cfg.customerType?.label || null,
+});
+
 async function generatePersona(cfg) {
-  const { system, user } = personaBuilderPrompt(cfg);
-  const { json } = await callClaude({ model: call.models.persona, system, messages: [{ role: 'user', content: user }], maxTokens: 4000, effort: 'medium', schema: PERSONA_SCHEMA, track: call, role: 'persona' });
+  const ctx = promptCtx();
+  const { system, user } = usingProxy() ? {} : PROMPTS.personaBuilderPrompt(cfg, ctx);
+  const { json, data } = await callClaude({
+    model: call.models.persona, system, messages: [{ role: 'user', content: user }], maxTokens: 4000, effort: 'medium', schema: PROMPTS.PERSONA_SCHEMA, track: call, role: 'persona',
+    params: { cfg: cfgForServer(cfg), recentNames: ctx.recentNames },
+  });
+  if (data?.session) call.session = data.session; // the server remembers this person; later turns refer to it
   json.voice_pitch = clamp(json.voice_pitch, 0.75, 1.25, 1);
   json.voice_rate = clamp(json.voice_rate, 0.85, 1.2, 1);
   json.objections = (json.objections || []).slice(0, 2);
@@ -114,7 +129,7 @@ async function dial() {
   $('mute').classList.toggle('hidden', !handsFree());
   muted = false; $('mute').textContent = 'Mute';
   $('ptt-help').innerHTML = helpText();
-  call.system = personaSystemPrompt(call.persona, cfg);
+  call.system = usingProxy() ? null : PROMPTS.personaSystemPrompt(call.persona, cfg, promptCtx());
   renderPersona();
   renderCoach();
   setPtt(cfg.mode === 'drill' ? 'Connecting…' : 'Ringing…', true);
@@ -206,7 +221,7 @@ async function ownerTurn(callerTurn) {
   showTyping(true);
   let res;
   try {
-    res = await callClaude({ model: call.models.owner, system: call.system, messages: call.messages, maxTokens: 1500, effort: call.ownerEffort, schema: TURN_SCHEMA, cache: call.cache, track: call, role: 'owner' });
+    res = await callClaude({ model: call.models.owner, system: call.system, messages: call.messages, maxTokens: 1500, effort: call.ownerEffort, schema: PROMPTS.TURN_SCHEMA, cache: call.cache, track: call, role: 'owner', params: { session: call.session, messages: call.messages } });
   } catch (e) {
     showTyping(false);
     call.busy = false;

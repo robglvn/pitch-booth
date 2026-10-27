@@ -22,9 +22,10 @@ async function runDraft() {
   $('d-body').innerHTML = '<div class="loading" style="padding:var(--s-8) 0"><div class="spinner"></div><div class="muted">This takes a few seconds…</div></div>';
   $('d-err').textContent = '';
   $('d-nav').classList.add('hidden');
-  const { system, user } = industryDraftPrompt(d.offer, d.note, d.pack);
+  const { system, user } = usingProxy() ? {} : PROMPTS.industryDraftPrompt(d.offer, d.note, d.pack);
   try {
-    const { json } = await callClaude({ model: roleModel('persona'), system, messages: [{ role: 'user', content: user }], maxTokens: 3000, effort: 'medium', schema: INDUSTRY_SCHEMA, track: {}, role: 'persona' });
+    const { json } = await callClaude({ model: roleModel('persona'), system, messages: [{ role: 'user', content: user }], maxTokens: 3000, effort: 'medium', schema: PROMPTS.INDUSTRY_SCHEMA, track: {}, role: 'draft',
+      params: { description: d.offer, note: d.note, previous: d.pack ? { label: d.pack.label, customer: d.pack.customer, types: d.pack.types.map(t => ({ label: t.label })) } : null } });
     if (draft !== d) return;
     d.pack = {
       label: String(json.label || 'Your business').slice(0, 60),

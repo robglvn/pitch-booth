@@ -3,8 +3,12 @@
 
 /* ---------- grading ---------- */
 async function gradeCall(c) {
-  const { system, user } = coachPrompt(c);
-  const { json } = await callClaude({ model: c.models.coach, system, messages: [{ role: 'user', content: user }], maxTokens: 12000, effort: c.coachEffort, schema: GRADE_SCHEMA, track: c, role: 'coach' });
+  const metrics = { discoveryCount: c.discoveryCount, questionCount: c.questionCount, statementCount: c.statementCount, openerSecs: c.openerSecs, outcome: c.outcome, durationSecs: Math.round(elapsed()) };
+  const { system, user } = usingProxy() ? {} : PROMPTS.coachPrompt({ ...c, ...metrics }, promptCtx());
+  const { json } = await callClaude({
+    model: c.models.coach, system, messages: [{ role: 'user', content: user }], maxTokens: 12000, effort: c.coachEffort, schema: PROMPTS.GRADE_SCHEMA, track: c, role: 'coach',
+    params: { session: c.session, turns: c.turns.map(t => ({ who: t.who, text: t.text, t: t.t })), metrics },
+  });
   return json;
 }
 
@@ -47,7 +51,7 @@ async function endCall() {
     grade, overall,
     models: c.models,
     cost: c.cost,
-    transcript: transcriptText(c),
+    transcript: PROMPTS.transcriptText(c, settings.myName),
     turns: c.turns,
   };
   const wasLocked = !brutalUnlocked();

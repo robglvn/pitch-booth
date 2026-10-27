@@ -33,13 +33,18 @@ function searchProfessions(query, limit = 8) {
     return { ...p, score };
   }).filter(p => p.score > 0).sort((a, b) => b.score - a.score).slice(0, limit);
 }
+// The search box's example jobs: three picked at random from the whole list each time it appears.
+function randomSearchHint() {
+  const jobs = [...PROFESSIONS].sort(() => Math.random() - 0.5).slice(0, 3).map(p => p.name.replace(/\s*\(.*\)$/, '')).map(n => (/^[A-Z]{2}/.test(n) ? n : n[0].toLowerCase() + n.slice(1)));
+  return `Search, e.g. ${jobs.join(', ')}`;
+}
 const STOP_WORDS = new Set(['i', 'im', 'am', 'a', 'an', 'the', 'and', 'or', 'to', 'for', 'of', 'in', 'my', 'we', 'our', 'do', 'sell', 'selling', 'work', 'as', 'with', 'want', 'more', 'run', 'own']);
 
 // opts: { onPick(profession), onWriteOwn(query), selected: name, placeholder }
 function mountProfessionPicker(el, opts) {
   el.innerHTML = `
     <div class="search"><span class="search-ic">${icon('search')}</span>
-      <input type="search" class="search-input" autocomplete="off" placeholder="${esc(opts.placeholder || 'Search, e.g. videographer, barber, solar')}" aria-label="What do you do?"></div>
+      <input type="search" class="search-input" autocomplete="off" placeholder="${esc(opts.placeholder || randomSearchHint())}" aria-label="What do you do?"></div>
     <div class="prof-results" aria-live="polite"></div>`;
   const input = el.querySelector('input'), results = el.querySelector('.prof-results');
   const row = p => `<button type="button" class="prof-row ${opts.selected === p.name ? 'on' : ''}" data-prof="${esc(p.name)}"><span class="prof-emoji">${p.emoji}</span><span class="prof-text"><b>${esc(p.name)}</b><span>${esc(p.offer)}</span></span>${icon('arrow')}</button>`;

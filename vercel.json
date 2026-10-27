@@ -1,7 +1,7 @@
 {
   "cleanUrls": true,
   "functions": {
-    "api/claude.js": { "maxDuration": 120 }
+    "api/claude.js": { "maxDuration": 120, "includeFiles": "{data/**,js/prompts.js}" }
   },
   "headers": [
     {
