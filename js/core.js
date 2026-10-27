@@ -10,6 +10,8 @@ const PERSONALITY = window.PB_PERSONALITY;
 // Kinds of business and owner types, for calling business owners, live in data/business-types.js.
 const BUSINESS_TYPES = window.PB_BUSINESS_TYPES;
 const OWNER_TYPES = window.PB_OWNER_TYPES;
+// The searchable list of jobs behind "What do you do?" lives in data/professions.js.
+const PROFESSIONS = window.PB_PROFESSIONS;
 const PHASES = [
   { id: 'opener', t: 'Opener', d: 'Permission-based, under 30 seconds', hint: 'Ask for permission: "Did I catch you at a bad time?" Keep it short.' },
   { id: 'intro', t: 'Who I am + why I\'m calling', d: 'One breath: you, and why them', hint: 'Say who you are and why you called *them* specifically.' },

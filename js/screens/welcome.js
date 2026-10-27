@@ -25,7 +25,32 @@ async function checkQuickStart() {
   $('w-quick-card').classList.toggle('hidden', !open);
   $('w-or').classList.toggle('hidden', !open);
   $('w-go').classList.toggle('primary', !open);
-  (open ? $('w-quick') : $('w-code')).focus();
+  if (!open) { $('w-code').focus(); return; }
+  mountProfessionPicker($('w-prof'), {
+    onPick: p => quickStartJob(p),
+    // Not listed: describe it in a sentence; Claude drafts the industry and they confirm it.
+    onWriteOwn: text => { showWelcome('quick'); if (text) $('q-quick').value = text; },
+  }).focus();
+}
+
+// Signs a new visitor in without a code (when quick start is open) and loads their profile.
+async function ensureQuickProfile() {
+  if (!settings.inviteCode && !settings.apiKey) {
+    const { code } = await api('/api/join', { method: 'POST', body: JSON.stringify({ quick: true }) });
+    settings = { ...settings, inviteCode: code };
+  }
+  if (usingProxy() && !profile) await loadProfile();
+}
+
+// Quick start from the job list: save the job with its example offer, and ring.
+async function quickStartJob(p) {
+  $('w-quick-err').textContent = 'Setting up…';
+  try {
+    await ensureQuickProfile();
+    await saveSeller({ category: p.group, profession: p.name, offer: p.offer, audience: p.audience || CATEGORIES[p.group].audience || '', quick: true });
+    $('w-quick-err').textContent = '';
+    startCall(buildConfig('random'));
+  } catch (e) { $('w-quick-err').textContent = e.message; }
 }
 
 // Picks the industry whose keywords show up most in a one-line description (see "match" in industries.js).
@@ -47,12 +72,11 @@ async function quickStart(text, errEl, btn) {
   const label = btn.innerHTML;
   btn.disabled = true; btn.textContent = 'Setting up…';
   try {
-    if (!settings.inviteCode && !settings.apiKey) {
-      const { code } = await api('/api/join', { method: 'POST', body: JSON.stringify({ quick: true }) });
-      settings = { ...settings, inviteCode: code };
-    }
-    if (usingProxy() && !profile) await loadProfile();
-    const category = guessCategory(text);
+    await ensureQuickProfile();
+    // A job named in the sentence ("I'm a barber…") picks its group; otherwise fall back to keyword hints.
+    const job = searchProfessions(text, 1)[0];
+    const prof = job && job.score >= 60 ? job : null;
+    const category = prof?.group || guessCategory(text);
     // Not one of the built-in industries: Claude drafts it and they confirm before the first call.
     if (!category) {
       const back = currentView === 'welcome' && !$('w-quick-panel').classList.contains('hidden') ? 'quick' : 'join';
@@ -63,9 +87,7 @@ async function quickStart(text, errEl, btn) {
       });
       return;
     }
-    settings = { ...settings, pitch: text, seller: { offer: text.slice(0, 200), category, audience: CATEGORIES[category]?.audience || '', quick: true } };
-    LS.set('ph_settings', settings);
-    if (usingProxy()) await saveProfile();
+    await saveSeller({ offer: text.slice(0, 200), category, ...(prof ? { profession: prof.name } : {}), audience: prof?.audience || CATEGORIES[category]?.audience || '', quick: true });
     startCall(buildConfig('random'));
   } catch (e) {
     errEl.textContent = e.message;
@@ -73,7 +95,6 @@ async function quickStart(text, errEl, btn) {
     btn.disabled = false; btn.innerHTML = label;
   }
 }
-$('w-quick-go').onclick = () => quickStart($('w-quick').value, $('w-quick-err'), $('w-quick-go'));
 $('q-quick-go').onclick = () => quickStart($('q-quick').value, $('q-quick-err'), $('q-quick-go'));
 $('q-quick-back').onclick = () => openQuestionnaire();
 

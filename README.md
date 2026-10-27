@@ -21,7 +21,8 @@ css/
   screens.css           each screen, plus phone sizes
 
 data/                   ← edit these to change who people practice with
-  industries.js         the 12 industries: examples, objections, customer types
+  professions.js        ~175 jobs people search for ("Videographer", "Barber"…), each pointing to a group below
+  industries.js         the 18 groups: examples, objections, customer types
   call-types.js         cold call, interested lead, follow-up, past customer
   personalities.js      personality traits, how common each is, rules, presets, backgrounds
   business-types.js     kinds of business and owner types, for people who call business owners
@@ -29,6 +30,7 @@ data/                   ← edit these to change who people practice with
 js/                     loaded in this order (see the bottom of index.html)
   core.js               shared helpers and screen switching
   icons.js              the line icons (phone, star, settings…) used on buttons and cards
+  picker.js             the "What do you do?" search and browse list
   state.js              settings, call history, invite links, the person's profile
   ai.js                 talking to Claude, friendly error messages
   prompts.js            ← every instruction the AI gets (building the person, playing them, coaching,
@@ -59,7 +61,8 @@ The `js/` files share one global scope and must load in the order listed at the 
 
 | I want to… | Edit |
 |---|---|
-| Add an industry | `data/industries.js` — copy an entry, change the words. (People can also "Write your own": Claude drafts one just for them.) |
+| Add a job people can search for | `data/professions.js` — one line |
+| Add an industry group | `data/industries.js` — copy an entry, change the words. (People can also "Write your own": Claude drafts one just for them.) |
 | Add customer types or objections | `data/industries.js`, in that industry's `types` / `objections` |
 | Add personality traits or make some rarer | `data/personalities.js` (instructions at the top) |
 | Change how the call types work | `data/call-types.js` |

@@ -30,6 +30,7 @@ const userCallTypes = () => (seller().callTypes?.length ? seller().callTypes : s
 function compileBrief(s) {
   const cat = CATEGORIES[s.category];
   const lines = [
+    s.profession && `What I do: ${s.profession}.`,
     `I sell: ${s.offer}${s.company ? ` (company: ${s.company})` : ''}${cat && s.category !== 'other' ? `, in ${cat.label.toLowerCase()}` : s.customPack?.label ? `, in ${s.customPack.label.toLowerCase()}` : ''}.`,
     s.audience && `I sell to: ${s.audience === 'people' ? 'individuals and families' : 'businesses'}${s.customer ? ` — ${s.customer}` : ''}.`,
     s.target?.audience === 'businesses' && `I'm calling: ${targetText(s.target).toLowerCase()}.`,
@@ -60,14 +61,13 @@ const Q_STEPS = [
     check: () => !q.name.trim() && "What's your name?",
   },
   {
-    title: 'What do you <em>sell</em>?', lead: 'Pick the closest fit, then say it in your own words.',
-    body: () => `
-      <div class="choices cats" role="radiogroup" aria-label="Industry">${Object.entries(CATEGORIES).map(([k, c]) =>
-        `<button type="button" class="choice ${q.category === k ? 'on' : ''}" data-pick="category" data-v="${k}" role="radio" aria-checked="${q.category === k}"><b>${c.emoji} ${esc(c.label)}</b><span>${esc(c.examples)}</span></button>`).join('')}</div>
-      <label for="q-offer">In one sentence, what do you offer?</label>
-      <input id="q-offer" data-k="offer" maxlength="200" placeholder="${esc(qCat().offer)}" value="${esc(q.offer)}">
+    title: 'What do you <em>do</em>?', lead: 'Search for your job, then say what you sell in your own words.',
+    body: () => !q.category ? `<div id="q-prof"></div>` : `
+      <div class="ind-chosen"><span class="prof-emoji">${esc(professionByName(q.profession)?.emoji || qCat().emoji)}</span><b>${esc(q.profession || (q.category === 'other' ? 'Write your own' : qCat().label))}</b><button type="button" class="linkish" data-act="rechoose">Change</button></div>
+      <label for="q-offer">What do you sell? <span style="color:var(--dim)">Say it your way</span></label>
+      <input id="q-offer" data-k="offer" maxlength="200" placeholder="${esc(q.category === 'other' ? 'e.g. I train dogs and run puppy classes' : qCat().offer)}" value="${esc(q.offer)}">
       <label for="q-company">Company name <span style="color:var(--dim)">(optional)</span></label>
-      <input id="q-company" data-k="company" maxlength="80" placeholder="e.g. Northstar Life" value="${esc(q.company)}">`,
+      <input id="q-company" data-k="company" maxlength="80" placeholder="e.g. Galvan Media" value="${esc(q.company)}">`,
     check: () => (!q.category && 'Pick the closest fit.') || (!q.offer.trim() && 'Say what you offer in a sentence.'),
   },
   {
@@ -134,7 +134,7 @@ function openQuestionnaire(newCode = '') {
     category: s.category || '', offer: s.offer || '', company: s.company || '', audience: s.audience || '', customer: s.customer || '',
     callTypes: [...(s.callTypes || [])], goal: s.goal || '', edge: s.edge || '', price: s.price || '', promo: s.promo || '',
     objections: [...(s.objections || [])], experience: s.experience || '', brief: '',
-    customPack: s.customPack || null, customPackFor: s.customPack ? s.offer : '',
+    customPack: s.customPack || null, customPackFor: s.customPack ? s.offer : '', profession: s.profession || '',
     business: s.target?.business || 'any',
   };
   // Someone who already wrote a free-text pitch keeps it as a starting point for the offer.
@@ -175,6 +175,18 @@ function renderQ() {
   });
   $('q-body').querySelectorAll('[data-fill]').forEach(b => b.onclick = () => { q[b.dataset.fill] = b.dataset.v; renderQ(); });
   if ($('q-skip')) $('q-skip').onclick = () => showWelcome('quick');
+  // Step 2: search for the job, or change it.
+  if ($('q-prof')) mountProfessionPicker($('q-prof'), {
+    selected: q.profession,
+    onPick: p => {
+      const prevSuggestion = professionByName(q.profession)?.offer;
+      if (!q.offer || q.offer === prevSuggestion) q.offer = p.offer;
+      Object.assign(q, { category: p.group, profession: p.name, audience: p.audience || CATEGORIES[p.group].audience || q.audience, customPack: null });
+      renderQ();
+    },
+    onWriteOwn: text => { Object.assign(q, { category: 'other', profession: '', offer: text || q.offer }); renderQ(); },
+  }).focus();
+  $('q-body').querySelectorAll('[data-act="rechoose"]').forEach(b => b.onclick = () => { q.category = ''; renderQ(); });
   const add = $('q-obj-add');
   if (add) {
     const addIt = () => { const v = $('q-obj-new').value.trim(); if (v && !q.objections.includes(v)) q.objections.push(v); renderQ(); $('q-obj-new').focus(); };

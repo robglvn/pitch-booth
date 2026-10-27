@@ -19,8 +19,12 @@ function renderHome() {
   const first = (profile?.name || settings.myName || '').split(' ')[0];
   $('home-hello').textContent = first ? `Hi ${first}` : 'Ready to practice?';
   const s = seller(), cat = sellerCat();
-  $('home-industry').innerHTML = `<span class="muted">You're practicing</span> <b>${esc(cat.label)}</b>${s.offer ? `<span class="ind-offer">${esc(s.offer)}</span>` : ''}<span class="ind-change">Change</span>`;
-  $('home-target').innerHTML = `<span class="muted">You're calling</span> <b>${esc(targetText(callTarget()))}</b><span class="ind-change">Change</span>`;
+  const job = professionByName(s.profession);
+  $('biz-emoji').textContent = job?.emoji || cat.emoji;
+  $('biz-name').textContent = s.profession || cat.label;
+  $('biz-company').textContent = s.company || '';
+  $('biz-offer').textContent = s.offer || 'Tap Edit to say what you sell.';
+  $('biz-target').textContent = targetText(callTarget());
   $('home-tune').classList.toggle('hidden', !!s.offer && !s.quick);
   $('call-cards').innerHTML = userCallTypes().map(k => { const c = CALL_TYPES[k]; return `
     <button class="call-row" data-call="${k}"><span class="mode-icon">${icon(c.icon, 22)}</span><span class="call-row-text"><b>${esc(c.plain || c.label)}</b><span>${esc((c.plain || '').toLowerCase().includes(c.label.toLowerCase()) ? c.desc : c.label)}</span></span>${icon('arrow')}</button>`; }).join('');

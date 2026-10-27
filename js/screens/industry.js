@@ -2,41 +2,52 @@
 // (people at home, or owners of a kind of business).
 'use strict';
 
-/* ---------- industry picker ---------- */
-let pickedIndustry = '';
+/* ---------- what you do ---------- */
+let picked = null; // { group, profession, emoji, audience }
 
 function openIndustryPicker() {
-  pickedIndustry = seller().category || '';
-  $('ind-offer').value = seller().offer || '';
-  $('ind-err').textContent = '';
-  renderIndustryGrid();
+  const s = seller(), prof = professionByName(s.profession);
   $('industry-modal').classList.remove('hidden');
+  showPickStage(prof?.name);
 }
 function closeIndustryPicker() { $('industry-modal').classList.add('hidden'); }
 
-function renderIndustryGrid() {
-  $('ind-grid').innerHTML = Object.entries(CATEGORIES).map(([k, c]) =>
-    `<button type="button" class="choice ${pickedIndustry === k ? 'on' : ''}" data-ind="${k}" role="radio" aria-checked="${pickedIndustry === k}"><b>${c.emoji} ${esc(c.label)}</b><span>${esc(c.examples)}</span></button>`).join('');
-  document.querySelectorAll('[data-ind]').forEach(b => b.onclick = () => {
-    const changed = pickedIndustry !== b.dataset.ind;
-    pickedIndustry = b.dataset.ind;
-    // A new industry usually means a new offer: clear it and show that industry's example.
-    if (changed && pickedIndustry !== seller().category) $('ind-offer').value = '';
-    $('ind-offer').placeholder = CATEGORIES[pickedIndustry].offer;
-    renderIndustryGrid();
-    $('ind-offer').focus();
+function showPickStage(selected) {
+  $('ind-pick-stage').classList.remove('hidden');
+  $('ind-confirm-stage').classList.add('hidden');
+  const input = mountProfessionPicker($('ind-pick'), {
+    selected,
+    onPick: p => showConfirmStage({ group: p.group, profession: p.name, emoji: p.emoji, audience: p.audience }, p.offer),
+    onWriteOwn: q => showConfirmStage({ group: 'other', profession: '', emoji: '✏️' }, q),
   });
+  input.focus();
 }
 
-// Switching industries keeps the person's name and experience, and resets the industry-specific answers
+// Step two: what they sell, filled in with the job's example (or what they had before for the same job).
+function showConfirmStage(p, suggestion) {
+  picked = p;
+  const s = seller();
+  $('ind-pick-stage').classList.add('hidden');
+  $('ind-confirm-stage').classList.remove('hidden');
+  $('ind-chosen-emoji').textContent = p.emoji;
+  $('ind-chosen-name').textContent = p.profession || 'Write your own';
+  const keep = (p.profession && p.profession === s.profession) || (p.group === 'other' && s.category === 'other');
+  $('ind-offer').value = keep ? s.offer || '' : p.group === 'other' ? suggestion || '' : suggestion || '';
+  $('ind-offer').placeholder = p.group === 'other' ? 'e.g. I train dogs and run puppy classes' : CATEGORIES[p.group].offer;
+  $('ind-err').textContent = '';
+  $('ind-offer').focus();
+  $('ind-offer').select();
+}
+
+// Switching jobs keeps the person's name and experience, and resets the job-specific answers
 // (company, objections, call types, goal). They can fill those in again with the full questions.
 async function saveIndustry() {
   const offer = $('ind-offer').value.trim();
-  if (!pickedIndustry) { $('ind-err').textContent = 'Pick the closest fit.'; return; }
-  if (!offer) { $('ind-err').textContent = 'Say what you offer in a sentence.'; $('ind-offer').focus(); return; }
+  if (!picked) return;
+  if (!offer) { $('ind-err').textContent = picked.group === 'other' ? 'Describe what you do and sell in a sentence.' : 'Say what you sell in a sentence.'; $('ind-offer').focus(); return; }
   const prev = seller();
   // "Write your own": Claude drafts it, they confirm, then it's saved.
-  if (pickedIndustry === 'other' && !(prev.category === 'other' && prev.customPack && prev.offer === offer)) {
+  if (picked.group === 'other' && !(prev.category === 'other' && prev.customPack && prev.offer === offer)) {
     closeIndustryPicker();
     openDraft({
       offer,
@@ -45,9 +56,12 @@ async function saveIndustry() {
     });
     return;
   }
-  const same = prev.category === pickedIndustry;
+  const audience = picked.audience || CATEGORIES[picked.group].audience || prev.audience || '';
+  const same = prev.category === picked.group && prev.profession === picked.profession;
   const next = same ? { ...prev, offer } : {
-    category: pickedIndustry, offer, audience: CATEGORIES[pickedIndustry].audience || prev.audience || '',
+    category: picked.group, ...(picked.profession ? { profession: picked.profession } : {}), offer, audience,
+    // Who they call carries over only if the new job sells to the same kind of customer.
+    ...(prev.target && prev.target.audience === audience ? { target: prev.target } : {}),
     ...(prev.experience ? { experience: prev.experience } : {}), quick: true,
   };
   $('ind-save').disabled = true;
@@ -73,6 +87,8 @@ function customSeller(offer, pack, prev = {}) {
 
 $('home-industry').onclick = openIndustryPicker;
 $('ind-save').onclick = saveIndustry;
+$('ind-rechoose').onclick = () => showPickStage(picked?.profession);
+$('ind-cancel-pick').onclick = closeIndustryPicker;
 $('ind-cancel').onclick = closeIndustryPicker;
 $('industry-modal').onclick = e => { if (e.target.id === 'industry-modal') closeIndustryPicker(); };
 

@@ -51,11 +51,10 @@
         <li><span class="n">3</span>You get a score and tips to get better</li>
       </ol>
       <div class="card hidden" id="w-quick-card">
-        <label for="w-quick" style="margin-top:0">What do you sell? <span style="color:var(--dim)">A sentence is enough</span></label>
-        <textarea id="w-quick" rows="3" maxlength="600" placeholder="e.g. I'm a barber and want more regulars. Or: I sell life insurance to young families."></textarea>
+        <label style="margin-top:0">What do you do?</label>
+        <div id="w-prof"></div>
         <div class="w-err" id="w-quick-err"></div>
-        <button class="btn primary big" id="w-quick-go" data-icon="phone">Start a call</button>
-        <p class="small muted" style="margin:14px 0 0;text-align:center">No sign-up. You can add details later.</p>
+        <p class="small muted" style="margin:var(--s-4) 0 0;text-align:center">No sign-up. Pick what you do and the phone rings.</p>
       </div>
       <div class="or hidden" id="w-or"><span>or use an invite code</span></div>
       <div class="card">
@@ -112,8 +111,17 @@
   <section id="view-home">
     <div class="home-head">
       <h2 id="home-hello">Ready to practice?</h2>
-      <button class="industry-line" id="home-industry" aria-label="Change what you sell"></button>
-      <button class="industry-line" id="home-target" aria-label="Change who you call"></button>
+    </div>
+    <div class="card biz-card">
+      <div class="biz-top">
+        <span class="biz-emoji" id="biz-emoji"></span>
+        <div class="biz-name"><span class="small muted">Your business</span><b id="biz-name"></b><span class="small muted" id="biz-company"></span></div>
+        <button class="btn sm" id="home-industry" aria-label="Edit what you do and sell">Edit</button>
+      </div>
+      <div class="biz-rows">
+        <div><span>You sell</span><p id="biz-offer"></p></div>
+        <div><span>You call</span><p><b id="biz-target"></b> <button class="linkish" id="home-target" aria-label="Change who you call">Change</button></p></div>
+      </div>
     </div>
     <button class="start-card" id="mode-random">
       <span class="start-icon" data-icon="phone"></span>
@@ -233,18 +241,23 @@
   </section>
 </div>
 
-<!-- WHAT YOU SELL: industry picker (opened from "Change" on the home screen) -->
+<!-- WHAT YOU DO: search or browse jobs, then say what you sell (opened from "Edit" on the home screen) -->
 <div class="modal-bg hidden" id="industry-modal">
   <div class="card modal">
-    <h2>What do you sell?</h2>
-    <p class="muted" style="margin:0 0 var(--s-5)">Pick the closest fit. The people you call will match it.</p>
-    <div class="choices cats" id="ind-grid" role="radiogroup" aria-label="Industry"></div>
-    <label for="ind-offer">In one sentence, what do you offer?</label>
-    <input id="ind-offer" maxlength="200">
-    <div class="w-err" id="ind-err"></div>
-    <div class="row" style="margin-top:var(--s-4)">
-      <button class="btn primary" id="ind-save">Save</button>
-      <button class="btn" id="ind-cancel">Cancel</button>
+    <h2>What do you do?</h2>
+    <div id="ind-pick-stage">
+      <div id="ind-pick"></div>
+      <div class="row" style="margin-top:var(--s-5)"><button class="btn" id="ind-cancel-pick">Cancel</button></div>
+    </div>
+    <div id="ind-confirm-stage" class="hidden">
+      <div class="ind-chosen"><span class="prof-emoji" id="ind-chosen-emoji"></span><b id="ind-chosen-name"></b><button class="linkish" id="ind-rechoose">Change</button></div>
+      <label for="ind-offer">What do you sell? <span style="color:var(--dim)">Say it your way</span></label>
+      <input id="ind-offer" maxlength="200">
+      <div class="w-err" id="ind-err"></div>
+      <div class="row" style="margin-top:var(--s-4)">
+        <button class="btn primary" id="ind-save">Save</button>
+        <button class="btn" id="ind-cancel">Cancel</button>
+      </div>
     </div>
   </div>
 </div>
@@ -347,8 +360,10 @@
 <script src="data/industries.js"></script>
 <script src="data/personalities.js"></script>
 <script src="data/business-types.js"></script>
+<script src="data/professions.js"></script>
 <script src="js/core.js"></script>
 <script src="js/icons.js"></script>
+<script src="js/picker.js"></script>
 <script src="js/state.js"></script>
 <script src="js/ai.js"></script>
 <script src="js/prompts.js"></script>
