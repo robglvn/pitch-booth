@@ -43,6 +43,7 @@ function personaBuilderPrompt(cfg) {
   const gender = Math.random() < 0.5 ? 'female' : (Math.random() < 0.94 ? 'male' : 'nonbinary');
   const constraints = {
     call_type: CALL_TYPES[cfg.callType].label,
+    ...(cfg.business ? { business_type: cfg.business.who } : {}),
     ...(cfg.customerType ? { customer_type: `${cfg.customerType.label}: ${cfg.customerType.desc}` } : {}),
     personality_traits: PERSONALITY.describe(cfg.personality.ids),
     // A described target customer ("guys 18–40", "families, 28–45") decides gender and age; otherwise spread them out.
@@ -55,7 +56,8 @@ function personaBuilderPrompt(cfg) {
     avoid_these_names: recentNames,
   };
   const audience = sellerAudience();
-  const who = audience === 'people' ? 'The prospect is an individual, not a business, and the caller reaches them on their personal phone.'
+  const who = cfg.business ? `The prospect is the ${cfg.business.who}. What running that business is like: ${cfg.business.detail} The caller reaches them at work, and they hear the offer the way someone running that business would (what it means for the business, its costs, its staff, its customers).`
+    : audience === 'people' ? 'The prospect is an individual, not a business, and the caller reaches them on their personal phone.'
     : audience === 'businesses' ? 'The prospect owns or makes buying decisions for a business, and the caller reaches them at work.'
     : 'Decide from the brief whether the prospect is a business decision-maker or an individual.';
   const system = `You create realistic prospects for a sales-call practice simulator. The person practicing is a salesperson. Here is what they sell, in their words:
@@ -192,7 +194,7 @@ ${settings.pitch}
 THE PROSPECT (the caller didn't know any of this in advance)
 ${JSON.stringify({ name: p.name, age: p.age, who: p.who_line, situation: p.life_detail, current_solution: p.current_solution, personality: p.personality, attitude_to_sales: p.attitude_to_sales, values_texture: p.values_texture, objections: p.objections, win_condition: p.win_condition }, null, 2)}
 
-CALL TYPE: ${CALL_TYPES[c.cfg.callType].label}${c.cfg.customerType ? `\nCUSTOMER TYPE: ${c.cfg.customerType.label}: ${c.cfg.customerType.desc}` : ''}
+CALL TYPE: ${CALL_TYPES[c.cfg.callType].label}${c.cfg.business ? `\nBUSINESS: ${c.cfg.business.who}` : ''}${c.cfg.customerType ? `\nCUSTOMER TYPE: ${c.cfg.customerType.label}: ${c.cfg.customerType.desc}` : ''}
 DIFFICULTY: ${c.cfg.difficulty}
 METRICS FROM THE CALL: ${JSON.stringify(metrics)}
 

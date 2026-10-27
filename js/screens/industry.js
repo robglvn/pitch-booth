@@ -1,4 +1,5 @@
-// Pitch Booth — "Change" on the home screen: pick a different industry and say what you offer in a sentence.
+// Pitch Booth — the two "Change" links on the home screen: what you sell (industry and offer) and who you call
+// (people at home, or owners of a kind of business).
 'use strict';
 
 /* ---------- industry picker ---------- */
@@ -74,3 +75,38 @@ $('home-industry').onclick = openIndustryPicker;
 $('ind-save').onclick = saveIndustry;
 $('ind-cancel').onclick = closeIndustryPicker;
 $('industry-modal').onclick = e => { if (e.target.id === 'industry-modal') closeIndustryPicker(); };
+
+/* ---------- who you call ---------- */
+let pickedTarget = null;
+
+function openTargetPicker() {
+  pickedTarget = { ...callTarget() };
+  renderTargetPicker();
+  $('target-modal').classList.remove('hidden');
+}
+function closeTargetPicker() { $('target-modal').classList.add('hidden'); }
+
+function renderTargetPicker() {
+  const t = pickedTarget;
+  $('tg-audience').innerHTML = [['people', icon('people', 22), 'People & families', 'Homeowners, parents, retirees…'], ['businesses', icon('store', 22), 'Business owners', 'Owners and managers, at work']].map(([k, e, l, d]) =>
+    `<button type="button" class="choice ${t.audience === k ? 'on' : ''}" data-tg="${k}"><span class="e">${e}</span><b>${l}</b><span>${d}</span></button>`).join('');
+  $('tg-biz-wrap').classList.toggle('hidden', t.audience !== 'businesses');
+  $('tg-grid').innerHTML = [['any', { label: 'Any kind of business', emoji: '🔀', examples: 'A different kind of business every call' }], ...Object.entries(BUSINESS_TYPES)].map(([k, b]) =>
+    `<button type="button" class="choice ${t.business === k ? 'on' : ''}" data-tgb="${k}" role="radio" aria-checked="${t.business === k}"><b>${b.emoji} ${esc(b.label)}</b><span>${esc(b.examples)}</span></button>`).join('');
+  document.querySelectorAll('[data-tg]').forEach(b => b.onclick = () => { pickedTarget.audience = b.dataset.tg; renderTargetPicker(); });
+  document.querySelectorAll('[data-tgb]').forEach(b => b.onclick = () => { pickedTarget.business = b.dataset.tgb; renderTargetPicker(); });
+}
+
+async function saveTarget() {
+  const t = pickedTarget;
+  const next = { ...seller(), audience: t.audience, target: { audience: t.audience, business: t.audience === 'businesses' ? t.business || 'any' : 'any' } };
+  $('tg-save').disabled = true;
+  try { await saveSeller(next); closeTargetPicker(); renderHome(); }
+  catch (e) { showError(e.message); }
+  $('tg-save').disabled = false;
+}
+
+$('home-target').onclick = openTargetPicker;
+$('tg-save').onclick = saveTarget;
+$('tg-cancel').onclick = closeTargetPicker;
+$('target-modal').onclick = e => { if (e.target.id === 'target-modal') closeTargetPicker(); };

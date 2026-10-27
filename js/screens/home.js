@@ -20,6 +20,7 @@ function renderHome() {
   $('home-hello').textContent = first ? `Hi ${first}` : 'Ready to practice?';
   const s = seller(), cat = sellerCat();
   $('home-industry').innerHTML = `<span class="muted">You're practicing</span> <b>${esc(cat.label)}</b>${s.offer ? `<span class="ind-offer">${esc(s.offer)}</span>` : ''}<span class="ind-change">Change</span>`;
+  $('home-target').innerHTML = `<span class="muted">You're calling</span> <b>${esc(targetText(callTarget()))}</b><span class="ind-change">Change</span>`;
   $('home-tune').classList.toggle('hidden', !!s.offer && !s.quick);
   $('call-cards').innerHTML = userCallTypes().map(k => { const c = CALL_TYPES[k]; return `
     <button class="call-row" data-call="${k}"><span class="mode-icon">${icon(c.icon, 22)}</span><span class="call-row-text"><b>${esc(c.plain || c.label)}</b><span>${esc((c.plain || '').toLowerCase().includes(c.label.toLowerCase()) ? c.desc : c.label)}</span></span>${icon('arrow')}</button>`; }).join('');
@@ -32,7 +33,7 @@ function renderHome() {
     ? `<b>${n} practice call${n === 1 ? '' : 's'}</b><span>Recent average ${avg} out of 10 · Best ${best} · You asked for the next step in ${asked} of ${n}</span>`
     : '<b>No calls yet</b><span>Your scores show up here after your first practice call.</span>';
   $('home-trend').innerHTML = n ? trendSVG(history) : '';
-  $('unlock-note').innerHTML = `<span class="row" style="gap:6px">${brutalUnlocked() ? `${icon('unlock', 16)} Hard calls unlocked` : `${icon('lock', 16)} Hard calls unlock after ${BRUTAL_UNLOCK}`}</span>`;
+  $('unlock-note').innerHTML = `<span class="row" style="gap:6px">${brutalUnlocked() ? `${icon('unlock', 16)} Brutal unlocked` : `${icon('lock', 16)} Brutal unlocks after ${BRUTAL_UNLOCK} calls`}</span>`;
 }
 
 function renderHistory() {

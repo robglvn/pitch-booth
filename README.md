@@ -24,6 +24,7 @@ data/                   ← edit these to change who people practice with
   industries.js         the 12 industries: examples, objections, customer types
   call-types.js         cold call, interested lead, follow-up, past customer
   personalities.js      personality traits, how common each is, rules, presets, backgrounds
+  business-types.js     kinds of business and owner types, for people who call business owners
 
 js/                     loaded in this order (see the bottom of index.html)
   core.js               shared helpers and screen switching
@@ -62,6 +63,7 @@ The `js/` files share one global scope and must load in the order listed at the 
 | Add customer types or objections | `data/industries.js`, in that industry's `types` / `objections` |
 | Add personality traits or make some rarer | `data/personalities.js` (instructions at the top) |
 | Change how the call types work | `data/call-types.js` |
+| Add a kind of business people can call | `data/business-types.js` |
 | Change how the AI customer behaves | `js/prompts.js` → `personaSystemPrompt` |
 | Change how people are invented | `js/prompts.js` → `personaBuilderPrompt` |
 | Change how calls are graded | `js/prompts.js` → `coachPrompt` and `GRADE_SCHEMA` |

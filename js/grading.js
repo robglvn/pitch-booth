@@ -38,7 +38,7 @@ async function endCall() {
     id: Date.now().toString(36),
     date: new Date().toISOString(),
     mode: c.cfg.mode, difficulty: c.cfg.difficulty, objection: c.cfg.objection,
-    callType: c.cfg.callType, customerType: c.cfg.customerType?.label || null,
+    callType: c.cfg.callType, customerType: c.cfg.customerType?.label || null, business: c.cfg.business?.label || null,
     traitSig: c.cfg.personality?.sig || null, traits: PERSONALITY.labels(c.cfg.personality?.ids || {}),
     setup: { mode: c.cfg.mode, opts: c.cfg.opts },
     persona: c.persona,

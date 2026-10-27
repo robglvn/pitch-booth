@@ -17,14 +17,19 @@ function buildConfig(mode, opts = {}) {
   let difficulty = opts.difficulty || 'realistic';
   if (mode === 'random') difficulty = brutalUnlocked() && Math.random() < 0.25 ? 'brutal' : 'realistic';
   if (difficulty === 'brutal' && !brutalUnlocked()) difficulty = 'realistic';
-  // The person is generated fresh each call: one customer type from the industry, plus random personality, age and background.
-  const types = sellerCat().types || [];
+  // The person is generated fresh each call: who you're calling (and for businesses, which kind), one customer type,
+  // plus random personality, age and background.
+  const target = callTarget();
+  const bizKey = target.audience !== 'businesses' ? null
+    : BUSINESS_TYPES[opts.business] ? opts.business : BUSINESS_TYPES[target.business] ? target.business : pick(Object.keys(BUSINESS_TYPES));
+  const business = bizKey ? { key: bizKey, ...BUSINESS_TYPES[bizKey] } : null;
+  const types = customerTypesFor(target);
   const customerType = (opts.customerType && types.find(x => x.label === opts.customerType)) || (types.length ? pick(types) : null);
   const callType = CALL_TYPES[opts.callType] ? opts.callType : pick(userCallTypes());
   const objection = mode === 'drill' ? (opts.objection || pick(objectionPool())) : null;
   // A fresh mix of personality traits each call, avoiding the kinds of people met in the last few calls.
   const personality = PERSONALITY.roll({ difficulty, preset: opts.archetype, avoid: history.slice(0, 5).map(h => h.traitSig).filter(Boolean) });
-  return { mode, difficulty, personality, customerType, callType, objection, opts };
+  return { mode, difficulty, personality, business, customerType, callType, objection, opts };
 }
 
 // Tapping a call card builds the person first, then shows who you're calling and what you're selling.

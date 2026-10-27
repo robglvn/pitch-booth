@@ -7,6 +7,9 @@ const CATEGORIES = window.PB_INDUSTRIES;
 const CALL_TYPES = window.PB_CALL_TYPES;
 // Personality traits, their odds and rules, plus backgrounds, live in personalities.js.
 const PERSONALITY = window.PB_PERSONALITY;
+// Kinds of business and owner types, for calling business owners, live in data/business-types.js.
+const BUSINESS_TYPES = window.PB_BUSINESS_TYPES;
+const OWNER_TYPES = window.PB_OWNER_TYPES;
 const PHASES = [
   { id: 'opener', t: 'Opener', d: 'Permission-based, under 30 seconds', hint: 'Ask for permission: "Did I catch you at a bad time?" Keep it short.' },
   { id: 'intro', t: 'Who I am + why I\'m calling', d: 'One breath: you, and why them', hint: 'Say who you are and why you called *them* specifically.' },
@@ -18,7 +21,7 @@ const PHASES = [
 const MOODS = { cold: ['#b9472f', 'Cold'], guarded: ['#c98a2b', 'Guarded'], neutral: ['#a39b91', 'Neutral'], warming: ['#8fa85e', 'Warming up'], interested: ['#3f7d5c', 'Interested'], sold: ['#2f6248', 'Sold'] };
 const SCORE_KEYS = [['opener', 'Opener'], ['discovery', 'Discovery'], ['listening', 'Listening'], ['objection_handling', 'Objection handling'], ['close_attempt', 'Close attempt'], ['rapport', 'Rapport']];
 // Shown to people; the ids (easy/realistic/brutal) stay the same in prompts and saved calls.
-const DIFFICULTY_LABELS = { easy: 'Easy', realistic: 'Normal', brutal: 'Hard' };
+const DIFFICULTY_LABELS = { easy: 'Easy', realistic: 'Realistic', brutal: 'Brutal' };
 const DRILL_REPS = 5;
 const BRUTAL_UNLOCK = 3;
 const BRUTAL_CUTOFF_MS = 20000;

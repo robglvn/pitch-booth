@@ -9,6 +9,7 @@
   background: none; border: 0; padding: var(--s-1) 0; font-size: var(--fs-base); color: var(--text);
 }
 .industry-line .ind-offer { color: var(--muted); }
+#home-target { margin-top: var(--s-1); }
 .industry-line .ind-offer::before { content: "· "; }
 .industry-line .ind-change { color: var(--green-text); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; margin-left: var(--s-1); }
 .start-card {

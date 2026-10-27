@@ -113,6 +113,7 @@
     <div class="home-head">
       <h2 id="home-hello">Ready to practice?</h2>
       <button class="industry-line" id="home-industry" aria-label="Change what you sell"></button>
+      <button class="industry-line" id="home-target" aria-label="Change who you call"></button>
     </div>
     <button class="start-card" id="mode-random">
       <span class="start-icon" data-icon="phone"></span>
@@ -147,6 +148,10 @@
       </div>
       <label>Kind of call</label>
       <select id="setup-calltype"></select>
+      <div id="setup-business-wrap">
+        <label>Kind of business</label>
+        <select id="setup-business"></select>
+      </div>
       <div id="setup-type-wrap">
         <label>Who picks up</label>
         <select id="setup-type"></select>
@@ -158,8 +163,8 @@
       <label>Difficulty</label>
       <div class="seg" id="setup-difficulty">
         <button data-d="easy">Easy</button>
-        <button data-d="realistic">Normal</button>
-        <button data-d="brutal">Hard</button>
+        <button data-d="realistic">Realistic</button>
+        <button data-d="brutal">Brutal</button>
       </div>
       <div class="small muted" id="setup-brutal-note" style="margin-top:6px"></div>
       <div class="row" style="margin-top:20px">
@@ -244,6 +249,23 @@
   </div>
 </div>
 
+<!-- WHO YOU CALL: people at home, or owners of a kind of business (opened from "Change" on the home screen) -->
+<div class="modal-bg hidden" id="target-modal">
+  <div class="card modal">
+    <h2>Who do you call?</h2>
+    <p class="muted" style="margin:0 0 var(--s-5)">The people who pick up will match this.</p>
+    <div class="choices two-up" id="tg-audience"></div>
+    <div id="tg-biz-wrap" class="hidden">
+      <label>What kind of business?</label>
+      <div class="choices cats" id="tg-grid" role="radiogroup" aria-label="Kind of business"></div>
+    </div>
+    <div class="row" style="margin-top:var(--s-6)">
+      <button class="btn primary" id="tg-save">Save</button>
+      <button class="btn" id="tg-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- SETTINGS MODAL -->
 <div class="modal-bg hidden" id="settings-modal">
   <div class="card modal">
@@ -324,6 +346,7 @@
 <script src="data/call-types.js"></script>
 <script src="data/industries.js"></script>
 <script src="data/personalities.js"></script>
+<script src="data/business-types.js"></script>
 <script src="js/core.js"></script>
 <script src="js/icons.js"></script>
 <script src="js/state.js"></script>

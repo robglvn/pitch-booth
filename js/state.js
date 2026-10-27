@@ -102,7 +102,7 @@ function fromServerCall(c) {
   const s = c.summary || {};
   return {
     id: c.id, remote: true, date: new Date(c.ts).toISOString(), mode: c.mode, difficulty: c.difficulty,
-    objection: s.objection, overall: c.overall, durationSecs: s.durationSecs, setup: s.setup, callType: s.callType, customerType: s.customerType, traitSig: s.traitSig,
+    objection: s.objection, overall: c.overall, durationSecs: s.durationSecs, setup: s.setup, callType: s.callType, customerType: s.customerType, business: s.business, traitSig: s.traitSig,
     grade: { asked_for_sale: c.asked_for_sale }, persona: { name: s.personaName, card_summary: s.card || '' },
   };
 }
@@ -130,7 +130,7 @@ async function saveCallRemote(entry) {
       method: 'POST',
       body: JSON.stringify({
         mode: entry.mode, difficulty: entry.difficulty, overall: entry.overall, asked_for_sale: !!entry.grade.asked_for_sale,
-        summary: { objection: entry.objection, durationSecs: entry.durationSecs, setup: entry.setup, card: entry.persona.card_summary, personaName: entry.persona.name, callType: entry.callType, customerType: entry.customerType, traitSig: entry.traitSig },
+        summary: { objection: entry.objection, durationSecs: entry.durationSecs, setup: entry.setup, card: entry.persona.card_summary, personaName: entry.persona.name, callType: entry.callType, customerType: entry.customerType, business: entry.business, traitSig: entry.traitSig },
         detail,
       }),
     });

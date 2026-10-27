@@ -10,7 +10,17 @@ const seller = () => settings.seller || {};
 // A "Write your own" industry carries its own customer types and objections (customPack), drafted by Claude.
 const withPack = (category, pack) => (category === 'other' && pack ? { ...CATEGORIES.other, ...pack } : CATEGORIES[category]);
 const sellerCat = () => withPack(seller().category, seller().customPack) || (seller().offer ? CATEGORIES.other : CATEGORIES.marketing);
-const sellerAudience = () => seller().audience || '';
+// Who you're calling: people at home, or owners of one kind of business ('any' mixes the kinds up).
+const callTarget = () => seller().target || { audience: seller().audience === 'businesses' ? 'businesses' : 'people', business: 'any' };
+const sellerAudience = () => callTarget().audience;
+const targetText = t => (t.audience !== 'businesses' ? 'People & families' : BUSINESS_TYPES[t.business]?.calling || 'Business owners (any kind)');
+// Who can pick up: the industry's customer types when they fit who you're calling, the general owner types for
+// businesses otherwise, and none (the AI invents them) when an industry built for one audience calls the other.
+function customerTypesFor(target = callTarget()) {
+  const cat = sellerCat(), fits = !cat.audience || cat.audience === target.audience;
+  if (target.audience === 'businesses') return fits && cat.types?.length ? cat.types : OWNER_TYPES;
+  return fits ? cat.types || [] : [];
+}
 const offerName = () => seller().offer || 'their product or service';
 const goalText = () => seller().goal || 'a meeting or next step';
 const objectionPool = () => (seller().objections?.length ? seller().objections : sellerCat().objections);
@@ -22,6 +32,7 @@ function compileBrief(s) {
   const lines = [
     `I sell: ${s.offer}${s.company ? ` (company: ${s.company})` : ''}${cat && s.category !== 'other' ? `, in ${cat.label.toLowerCase()}` : s.customPack?.label ? `, in ${s.customPack.label.toLowerCase()}` : ''}.`,
     s.audience && `I sell to: ${s.audience === 'people' ? 'individuals and families' : 'businesses'}${s.customer ? ` — ${s.customer}` : ''}.`,
+    s.target?.audience === 'businesses' && `I'm calling: ${targetText(s.target).toLowerCase()}.`,
     !s.audience && s.customer && `My customers: ${s.customer}.`,
     s.callTypes?.length && `Calls I make: ${s.callTypes.map(k => CALL_TYPES[k].label.toLowerCase()).join(', ')}.`,
     s.edge && `Why people pick me: ${s.edge}.`,
@@ -64,6 +75,9 @@ const Q_STEPS = [
     body: () => `
       <div class="choices two-up">${[['people', icon('people', 22), 'People & families', 'Homeowners, parents, retirees…'], ['businesses', icon('store', 22), 'Businesses', 'Owners, managers, buyers…']].map(([k, e, t, d]) =>
         `<button type="button" class="choice ${q.audience === k ? 'on' : ''}" data-pick="audience" data-v="${k}"><span class="e">${e}</span><b>${t}</b><span>${d}</span></button>`).join('')}</div>
+      ${q.audience === 'businesses' ? `<label>What kind of business do you call?</label>
+      <div class="chips">${[['any', 'Any kind'], ...Object.entries(BUSINESS_TYPES).map(([k, b]) => [k, b.label])].map(([k, l]) =>
+        `<button type="button" class="chip ${q.business === k ? 'on' : ''}" data-pick="business" data-v="${k}">${esc(l)}</button>`).join('')}</div>` : ''}
       <label for="q-customer">Describe your ideal customer</label>
       <input id="q-customer" data-k="customer" maxlength="200" placeholder="${esc(qCat().customer)}" value="${esc(q.customer)}">`,
     check: () => !q.audience && 'Pick people or businesses.',
@@ -121,6 +135,7 @@ function openQuestionnaire(newCode = '') {
     callTypes: [...(s.callTypes || [])], goal: s.goal || '', edge: s.edge || '', price: s.price || '', promo: s.promo || '',
     objections: [...(s.objections || [])], experience: s.experience || '', brief: '',
     customPack: s.customPack || null, customPackFor: s.customPack ? s.offer : '',
+    business: s.target?.business || 'any',
   };
   // Someone who already wrote a free-text pitch keeps it as a starting point for the offer.
   if (!q.offer && settings.pitch && settings.pitch !== DEFAULT_SETTINGS.pitch) q.offer = settings.pitch.split('\n')[0].slice(0, 200);
@@ -190,8 +205,9 @@ $('q-next').onclick = async () => {
     return;
   }
   if (q.step < Q_STEPS.length - 1) { q.step++; renderQ(); window.scrollTo(0, 0); return; }
-  const { step, newCode, name, city, brief, ...answers } = q;
+  const { step, newCode, name, city, brief, business, ...answers } = q;
   answers.offer = answers.offer.trim();
+  answers.target = { audience: answers.audience === 'businesses' ? 'businesses' : 'people', business: answers.audience === 'businesses' ? business || 'any' : 'any' };
   settings = { ...settings, myName: name.trim(), city: city.trim(), pitch: brief.trim(), seller: answers };
   LS.set('ph_settings', settings);
   $('q-next').disabled = true;
